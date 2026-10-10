@@ -2,6 +2,14 @@
 
 `docs/design/design.md`(設計書) を実装するときの、パッケージ間の取り決め。各 PBI はここに書かれた名前・型・挙動に従う。ここに無いものを他モジュールから呼ばない。
 
+> 実装の前に書いた契約。コードはおおむねこのとおりだが、実装時に足したものがある。食い違ったらコードが正。
+> - 型の追加: `TierDeps` (`{ os, stats }`)、`ImportPlan` / `ImportLineError`
+> - MCP の `get` の返り値は `{ meta, path, body }` (front matter は `meta`)。Host ヘッダーは `[::1]:<port>` も許可する。応答は SSE ではなく JSON
+> - CLI の `import` は、エラーがあると書き込まずに終了コード 1。`--json` のときはエラーも `{"error": ...}` の JSON で出す
+> - 結合テストのインデックス名は `test-<name>-<乱数>-idx` (エイリアスと同じ名前にはできないため)
+> - `pnpm test` は `*.int.test.ts` を除く単体テストだけを流す
+> - 設計からの変更と具体値は design.md の12章にまとめた
+
 ## 0. 共通の前提
 
 - Node 26 の型ストリップで TypeScript を**ビルドせずに**実行する。`node packages/indexer/src/cli.ts` のように直接動かす。

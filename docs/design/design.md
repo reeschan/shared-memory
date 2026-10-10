@@ -2,6 +2,8 @@
 
 Oct 10, 2026 · @Ryuki Tobita
 
+> この文書は「なぜこう作るか」を書いた設計書。実装で決めた具体値と、設計から変えた点は [12章](#12-実装で決めたこと設計からの変更) にまとめた。使い方は [README](../../README.md)、モジュール間の取り決めは [interfaces.md](interfaces.md) を見る。
+
 ## 1. 概要と方針
 
 複数のAIエージェント(Claude Code / Codex / Kimi)と自分自身が共通で参照する知識ベースを、ローカルPC内で完結するRAGとして構築する。Markdownファイルを唯一の正とし、OpenSearchはいつでも再構築できる派生インデックスとして扱う。
@@ -22,7 +24,12 @@ Oct 10, 2026 · @Ryuki Tobita
 
 ## 2. 全体構成
 
-&#91;embedded content: 全体構成 · エージェント3つ、ローカルPC内の5コンポーネント\]
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../architecture/architecture-dark.svg">
+  <img src="../architecture/architecture-light.svg" alt="全体構成の図。3 つのエージェントがローカル PC の MCP サーバーに接続し、MCP サーバーと CLI が Markdown・SQLite・Ollama・OpenSearch を使う。">
+</picture>
+
+埋め込みと OpenSearch のつながり (インデックス作成と検索の流れ) は [README の図](../../README.md#インデックス作成と検索の流れ) を見る。
 
 エージェントはMCPサーバーだけと話し、MCPサーバーがMarkdown・SQLite・OpenSearchを使い分ける。OpenSearchの中身はインデクサがMarkdownから作るので、消えても `reindex` で元に戻る。図では省略しているが、MCPサーバーも検索時にクエリを埋め込むため埋め込みサーバーを呼ぶ。
 
@@ -146,7 +153,7 @@ CREATE TABLE access_stats (
 | キャッシュ | `content_hash` とモデル名をキーに、ベクトルをローカルファイルへ保存する |
 
 - 想定環境はWindowsとRTX 5070 Ti(VRAM 16GB)で、0.6Bのモデルには十分な余裕がある。OpenSearchはDocker Desktop(WSL2)で動かし、WSL2側で vm.max\_map\_count を262144以上に設定する。
-- インデクサとMCPサーバーは同じ埋め込みクライアントを共有し、インストラクションと次元の食い違いを防ぐ。Je
+- インデクサとMCPサーバーは同じ埋め込みクライアントを共有し、インストラクションと次元の食い違いを防ぐ。
 - キャッシュは再生成できるためGit管理しない。ローカルモデルなので再生成に費用はかからず、かかるのは時間だけである。
 - モデルを変えるときはインデックス名を変えて全件を再埋め込みする。異なるモデルのベクトルは同じインデックスに混ぜない。
 
@@ -248,6 +255,14 @@ shared-memory/
 │   ├─ core/                 # front matter検証、チャンク分割、埋め込みクライアント
 │   ├─ indexer/              # index / reindex / decay / gc のCLI
 │   └─ mcp-server/           # search / get / write
+├─ skills/
+│   ├─ knowledge-import/     # 8.1 のSkill
+│   └─ mcp-setup/            # 8.2 のSkill と登録スクリプト (register.ps1)
+├─ scripts/                  # MCPサーバーの起動、タスクスケジューラへの登録
+├─ docs/
+│   ├─ design/               # この設計書と interfaces.md
+│   ├─ architecture/         # 構成図 (D2 のソースと SVG)
+│   └─ pbi/                  # 実装時の作業記録 (PBI、Jev の判定)
 ├─ config.yaml               # モデル名、次元、重み、半減期、インストラクション
 ├─ docker-compose.yml
 ├─ .cache/                   # 埋め込みキャッシュ(.gitignore)
@@ -339,10 +354,44 @@ shared-memory/
 
 ステップ3が終わった時点で最小構成として使い始められる。
 
+進み具合 (2026-10-11): ステップ1〜5は完了。ステップ3の「入力トークンの削減幅を測る」はまだ測っていない。ステップ6は未着手。
+
 ## 11. 未決事項
 
 - 引き継ぎ先のPCにGPUがない場合の埋め込み方式。CPU実行で足りるかを実測して決める。
 - 既存のノートを取り込むか。取り込む場合はfront matterを付与する変換スクリプトが必要になる。
-- Sudachiの辞書の種類(coreかfullか)と、ユーザー辞書を最初から入れるか。
+- Sudachiの辞書の種類(coreかfullか)と、ユーザー辞書を最初から入れるか。→ 暫定で core 辞書・ユーザー辞書なしで始めた。検索精度を見て見直す。
 - `consolidate` の要約に使うLLM(ローカルかAPIか)。
 - 検索精度の評価方法。20〜30件の質問と正解メモリの組を用意し、重みと半減期の調整に使う想定である。
+
+## 12. 実装で決めたこと・設計からの変更
+
+実装 (2026-10-10〜11) で具体的に決めた値と、設計から変えた点。
+
+### 12.1 設計から変えた点
+
+| 項目 | 設計 | 実装 | 理由 |
+| --- | --- | --- | --- |
+| GitHub のリモート | プライベート (7章・9章) | public (`reeschan/shared-memory`) | 作成時の判断。memories/ と stats.sqlite も公開されるので、仕事の内容を入れるならプライベートに切り替える |
+| `content_hash` の範囲 | 差分判定と埋め込みキャッシュのキー | チャンク本文に加えて title・scope・tags などのメタデータも含める | タグなどだけを変えたときも再投入されるようにするため。代わりにメタデータの変更でも再埋め込みが走る (ローカルなので時間だけ) |
+| 一度も読まれていないメモリの tier | 最終アクセス日から計算 | `last_accessed_at` が無ければ `created_at` から数える | 作っただけのメモリにも降格を効かせるため |
+| 置き換え済みメモリの archive 送り | `gc` (週1回) | `gc` に加えて `decay` (毎日) でも archive にする | 置き換えた翌日には検索から外れるようにするため |
+
+### 12.2 実装で決めた具体値
+
+| 項目 | 値 |
+| --- | --- |
+| OpenSearch / Sudachi | OpenSearch 3.5.0 + analysis-sudachi 3.6.0、システム辞書は core (20260723)。`sudachi.json` には未知語処理のプラグイン (`SimpleOovProviderPlugin`) が必須 |
+| 埋め込み | Ollama の `qwen3-embedding:0.6b` (`http://127.0.0.1:11434`)。キャッシュは `.cache/embeddings/<モデル名>/` |
+| MCP サーバー | `http://127.0.0.1:7820/mcp`、Streamable HTTP のステートレス。Host ヘッダーが `127.0.0.1` / `localhost` / `[::1]` でないリクエストは 403 (DNS リバインディング対策) |
+| インデックス名 | 初回は `memories-qwen3-0.6b-v1`。`reindex` は `<index_base>-r<UTC の年月日時分秒>` を作ってエイリアス `memories` を付け替え、旧インデックスを消す |
+| 実行方式 | TypeScript をビルドせず Node 26 で直接実行する。SQLite は `node:sqlite`、OpenSearch と Ollama は `fetch` で直接呼ぶ |
+| 定期実行 | Windows のタスクスケジューラ。MCP サーバーはログオン時、`decay` は毎日 9:00、`gc` は毎週日曜 9:30 (`scripts/register-tasks.ps1`) |
+| エージェントの登録 | Claude Code と Codex は各 CLI の `mcp add`。Kimi Code CLI には登録コマンドが無いので `~/.kimi-code/mcp.json` を編集する (`skills/mcp-setup/register.ps1`) |
+| `symbol_ref` の確認 | `config.yaml` の `repos` に登録したリポジトリの中で、名前を文字列として探すだけ。見つからなければ一覧に出す (LSP での確認は第2段階のまま) |
+
+### 12.3 運用で分かったこと
+
+- Codex の非対話実行 (`codex exec`) では、MCP ツールを呼ぶたびに承認が要る。承認を省くなら `default_tools_approval_mode = "approve"` を設定する (`write` も無承認になる点に注意)。
+- Windows PowerShell 5.1 は node の UTF-8 出力を CP932 として読むので、タスクのログを残すときは `[Console]::OutputEncoding` を UTF-8 にしてから node を呼ぶ。
+- Windows の curl で日本語を `-d` に直接書くと Shift_JIS で送られ、OpenSearch が弾く。日本語の本文は UTF-8 のファイルにして `--data-binary @<ファイル>` で送る。
