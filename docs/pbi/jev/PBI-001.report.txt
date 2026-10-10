@@ -1,0 +1,7 @@
+検証コマンドの出力:
+1. pnpm install → 終了コード 0 (Packages: +98, Done in 3.4s)
+2. pnpm typecheck → 終了コード 0 ($ tsc -p tsconfig.json、エラー出力なし)
+3. pnpm sm → not implemented
+4. cd packages/indexer && node -e import → ok
+変更箇所: package.json 1-16, pnpm-workspace.yaml 1-4, tsconfig.base.json 1-15, tsconfig.json 1-4, .gitignore 1-7, config.yaml 1-35, packages/core/package.json, packages/core/src/index.ts 1-12, packages/core/src/*.ts 12 個, packages/indexer/{package.json,src/cli.ts}, packages/mcp-server/{package.json,src/server.ts}, .gitkeep 4 つ
+自己判定: 条件1 pass, 条件2 pass, 条件3 pass, 条件4 pass

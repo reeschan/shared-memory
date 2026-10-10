@@ -1,0 +1,18 @@
+{
+  "description": "Hybrid search: BM25 (0.4) + kNN (0.6), min_max normalization",
+  "phase_results_processors": [
+    {
+      "normalization-processor": {
+        "normalization": {
+          "technique": "min_max"
+        },
+        "combination": {
+          "technique": "arithmetic_mean",
+          "parameters": {
+            "weights": [0.4, 0.6]
+          }
+        }
+      }
+    }
+  ]
+}

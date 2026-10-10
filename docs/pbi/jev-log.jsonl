@@ -1,0 +1,210 @@
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-001","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-001","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-001","gate":"model_selection","facts":{"files_changed":24,"files_new":24,"files_deleted":0,"modules":4,"criteria":4,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-002","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-002","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-002","gate":"model_selection","facts":{"files_changed":5,"files_new":5,"files_deleted":0,"modules":1,"criteria":6,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-003","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-003","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-003","gate":"model_selection","facts":{"files_changed":6,"files_new":3,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-004","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-004","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-004","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-005","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-005","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-005","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-006","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-006","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-006","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-007","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-007","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-007","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-008","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-008","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-008","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-009","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-009","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-009","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-010","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-010","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-010","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-011","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-011","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-011","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-012","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-012","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-012","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":3,"sensitive":true},"select":{"model":"opus","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: sensitive","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted opus"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-013","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-013","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-013","gate":"model_selection","facts":{"files_changed":4,"files_new":2,"files_deleted":0,"modules":2,"criteria":6,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-014","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-014","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-014","gate":"model_selection","facts":{"files_changed":4,"files_new":2,"files_deleted":0,"modules":2,"criteria":6,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-015","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-015","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-015","gate":"model_selection","facts":{"files_changed":5,"files_new":5,"files_deleted":0,"modules":2,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-016","gate":"brief","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; scores=1 (default)"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-016","gate":"pbi_quality","answer":null,"error":"HTTP 401 authentication_error","action":"skipped; no warnings available"}
+{"ts":"2026-10-10T09:22:20.388Z","pbi":"PBI-016","gate":"model_selection","facts":{"files_changed":21,"files_new":21,"files_deleted":0,"modules":2,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（Jev の答えが無いため 1 とした）","coupling=1（Jev の答えが無いため 1 とした）","ambiguity=1（Jev の答えが無いため 1 とした）"]},"action":"adopted sonnet"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"brief","key":"novelty","answer":{"0":0.96,"1":0.03,"2":0.01},"confidence":0.93,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"brief","key":"coupling","answer":{"0":0.02,"1":0.01,"2":0.97},"confidence":0.93,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"brief","key":"ambiguity","answer":{"0":0.99,"1":0.01,"2":0},"confidence":0.98,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"pbi_quality","key":"targets_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"pbi_quality","key":"off_limits_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"pbi_quality","key":"criteria_checkable","answer":0.67,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"pbi_quality","key":"commands_runnable","answer":0.69,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"pbi_quality","key":"needs_outside_context","answer":0.43,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-001","gate":"model_selection","facts":{"files_changed":24,"files_new":24,"files_deleted":0,"modules":4,"criteria":4,"sensitive":false},"select":{"model":"opus","scores":{"novelty":0,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=0（confidence 0.93）","coupling=2（confidence 0.93）","ambiguity=0（confidence 0.98）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"brief","key":"novelty","answer":{"0":0.84,"1":0.15,"2":0.01},"confidence":0.74,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"brief","key":"coupling","answer":{"0":0,"1":0.06,"2":0.94},"confidence":0.91,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.61,"2":0.39},"confidence":0.41,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"pbi_quality","key":"off_limits_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"pbi_quality","key":"criteria_checkable","answer":0.59,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"pbi_quality","key":"commands_runnable","answer":0.65,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"pbi_quality","key":"needs_outside_context","answer":0.33,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-002","gate":"model_selection","facts":{"files_changed":5,"files_new":5,"files_deleted":0,"modules":1,"criteria":6,"sensitive":false},"select":{"model":"opus","scores":{"novelty":0,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=0（confidence 0.74）","coupling=2（confidence 0.91）","ambiguity=0（confidence 0.41 < 0.7 のため 1 を 0 に下げた）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"brief","key":"novelty","answer":{"0":0,"1":1,"2":0},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"brief","key":"coupling","answer":{"0":0.3,"1":0.32,"2":0.38},"confidence":0,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"brief","key":"ambiguity","answer":{"0":0.99,"1":0.01,"2":0},"confidence":0.98,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"pbi_quality","key":"off_limits_named","answer":0.95,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"pbi_quality","key":"criteria_checkable","answer":0.54,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"pbi_quality","key":"commands_runnable","answer":0.75,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"pbi_quality","key":"needs_outside_context","answer":0.46,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-003","gate":"model_selection","facts":{"files_changed":6,"files_new":3,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":1,"ambiguity":0},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（confidence 1.00）","coupling=1（confidence 0.00 < 0.7 のため 2 を 1 に下げた）","ambiguity=0（confidence 0.98）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"brief","key":"novelty","answer":{"0":0,"1":1,"2":0},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"brief","key":"coupling","answer":{"0":0.74,"1":0.16,"2":0.1},"confidence":0.46,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.9,"2":0.1},"confidence":0.85,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"pbi_quality","key":"off_limits_named","answer":0.96,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"pbi_quality","key":"criteria_checkable","answer":0.59,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"pbi_quality","key":"commands_runnable","answer":0.77,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"pbi_quality","key":"needs_outside_context","answer":0.32,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-004","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":0,"ambiguity":1},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（confidence 1.00）","coupling=0（confidence 0.46）","ambiguity=1（confidence 0.85）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"brief","key":"novelty","answer":{"0":0.04,"1":0.93,"2":0.03},"confidence":0.9,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"brief","key":"coupling","answer":{"0":0.04,"1":0.56,"2":0.4},"confidence":0.34,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"brief","key":"ambiguity","answer":{"0":0.95,"1":0.04,"2":0.01},"confidence":0.91,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"pbi_quality","key":"criteria_checkable","answer":0.5,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"pbi_quality","key":"commands_runnable","answer":0.8,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"pbi_quality","key":"needs_outside_context","answer":0.33,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-005","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":0,"ambiguity":0},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（confidence 0.90）","coupling=0（confidence 0.34 < 0.7 のため 1 を 0 に下げた）","ambiguity=0（confidence 0.91）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"brief","key":"novelty","answer":{"0":0.05,"1":0.92,"2":0.03},"confidence":0.88,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"brief","key":"coupling","answer":{"0":0.5,"1":0.14,"2":0.36},"confidence":0,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"brief","key":"ambiguity","answer":{"0":0.9,"1":0.07,"2":0.03},"confidence":0.8,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"pbi_quality","key":"off_limits_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"pbi_quality","key":"criteria_checkable","answer":0.56,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"pbi_quality","key":"commands_runnable","answer":0.72,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"pbi_quality","key":"needs_outside_context","answer":0.49,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-006","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":0,"ambiguity":0},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（confidence 0.88）","coupling=0（confidence 0.00）","ambiguity=0（confidence 0.80）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"brief","key":"novelty","answer":{"0":0.09,"1":0.89,"2":0.02},"confidence":0.83,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"brief","key":"coupling","answer":{"0":0.85,"1":0.1,"2":0.05},"confidence":0.7,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"brief","key":"ambiguity","answer":{"0":0.95,"1":0.04,"2":0.01},"confidence":0.91,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"pbi_quality","key":"criteria_checkable","answer":0.58,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"pbi_quality","key":"commands_runnable","answer":0.74,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"pbi_quality","key":"needs_outside_context","answer":0.54,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-007","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":3,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":1,"coupling":0,"ambiguity":0},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=1（confidence 0.83）","coupling=0（confidence 0.70）","ambiguity=0（confidence 0.91）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"brief","key":"novelty","answer":{"0":0,"1":0,"2":1},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"brief","key":"coupling","answer":{"0":0,"1":0,"2":1},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.08,"2":0.92},"confidence":0.88,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"pbi_quality","key":"criteria_checkable","answer":0.5,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"pbi_quality","key":"commands_runnable","answer":0.73,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"pbi_quality","key":"needs_outside_context","answer":0.38,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-008","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"opus","scores":{"novelty":2,"coupling":2,"ambiguity":2},"reasons":["決定: coupling=2","novelty=2（confidence 1.00）","coupling=2（confidence 1.00）","ambiguity=2（confidence 0.88）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"brief","key":"novelty","answer":{"0":0,"1":0.97,"2":0.03},"confidence":0.95,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"brief","key":"coupling","answer":{"0":0,"1":0.03,"2":0.97},"confidence":0.95,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.17,"2":0.83},"confidence":0.74,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"pbi_quality","key":"criteria_checkable","answer":0.47,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"pbi_quality","key":"commands_runnable","answer":0.78,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"pbi_quality","key":"needs_outside_context","answer":0.45,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-009","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"opus","scores":{"novelty":1,"coupling":2,"ambiguity":2},"reasons":["決定: coupling=2","novelty=1（confidence 0.95）","coupling=2（confidence 0.95）","ambiguity=2（confidence 0.74）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"brief","key":"novelty","answer":{"0":0,"1":0.99,"2":0.01},"confidence":0.98,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"brief","key":"coupling","answer":{"0":0.04,"1":0.09,"2":0.87},"confidence":0.74,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"brief","key":"ambiguity","answer":{"0":0.96,"1":0.03,"2":0.01},"confidence":0.93,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"pbi_quality","key":"off_limits_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"pbi_quality","key":"criteria_checkable","answer":0.54,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"pbi_quality","key":"commands_runnable","answer":0.78,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"pbi_quality","key":"needs_outside_context","answer":0.47,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-010","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":5,"sensitive":false},"select":{"model":"opus","scores":{"novelty":1,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=1（confidence 0.98）","coupling=2（confidence 0.74）","ambiguity=0（confidence 0.93）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"brief","key":"novelty","answer":{"0":0.79,"1":0.21,"2":0},"confidence":0.69,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"brief","key":"coupling","answer":{"0":0.05,"1":0.72,"2":0.23},"confidence":0.58,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"brief","key":"ambiguity","answer":{"0":0.98,"1":0.02,"2":0},"confidence":0.97,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"pbi_quality","key":"criteria_checkable","answer":0.48,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"pbi_quality","key":"commands_runnable","answer":0.67,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"pbi_quality","key":"needs_outside_context","answer":0.43,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-011","gate":"model_selection","facts":{"files_changed":2,"files_new":1,"files_deleted":0,"modules":1,"criteria":4,"sensitive":false},"select":{"model":"haiku","scores":{"novelty":0,"coupling":0,"ambiguity":0},"reasons":["決定: どの条件にも当たらない","novelty=0（confidence 0.69）","coupling=0（confidence 0.58 < 0.7 のため 1 を 0 に下げた）","ambiguity=0（confidence 0.97）"]},"action":"adopted haiku (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"brief","key":"novelty","answer":{"0":0,"1":0.02,"2":0.98},"confidence":0.97,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"brief","key":"coupling","answer":{"0":0,"1":0,"2":1},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.74,"2":0.26},"confidence":0.61,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"pbi_quality","key":"criteria_checkable","answer":0.52,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"pbi_quality","key":"commands_runnable","answer":0.75,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"pbi_quality","key":"needs_outside_context","answer":0.44,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-012","gate":"model_selection","facts":{"files_changed":3,"files_new":2,"files_deleted":0,"modules":1,"criteria":3,"sensitive":true},"select":{"model":"opus","scores":{"novelty":2,"coupling":2,"ambiguity":0},"reasons":["決定: sensitive","novelty=2（confidence 0.97）","coupling=2（confidence 1.00）","ambiguity=0（confidence 0.61 < 0.7 のため 1 を 0 に下げた）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"brief","key":"novelty","answer":{"0":0,"1":1,"2":0},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"brief","key":"coupling","answer":{"0":0,"1":0.02,"2":0.98},"confidence":0.97,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"brief","key":"ambiguity","answer":{"0":0.88,"1":0.09,"2":0.03},"confidence":0.78,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"pbi_quality","key":"criteria_checkable","answer":0.47,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"pbi_quality","key":"commands_runnable","answer":0.72,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"pbi_quality","key":"needs_outside_context","answer":0.39,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-013","gate":"model_selection","facts":{"files_changed":4,"files_new":2,"files_deleted":0,"modules":2,"criteria":6,"sensitive":false},"select":{"model":"opus","scores":{"novelty":1,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=1（confidence 1.00）","coupling=2（confidence 0.97）","ambiguity=0（confidence 0.78）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"brief","key":"novelty","answer":{"0":0,"1":1,"2":0},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"brief","key":"coupling","answer":{"0":0.01,"1":0.17,"2":0.82},"confidence":0.71,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"brief","key":"ambiguity","answer":{"0":0.87,"1":0.11,"2":0.02},"confidence":0.78,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"pbi_quality","key":"criteria_checkable","answer":0.48,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"pbi_quality","key":"commands_runnable","answer":0.75,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"pbi_quality","key":"needs_outside_context","answer":0.37,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-014","gate":"model_selection","facts":{"files_changed":4,"files_new":2,"files_deleted":0,"modules":2,"criteria":6,"sensitive":false},"select":{"model":"opus","scores":{"novelty":1,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=1（confidence 1.00）","coupling=2（confidence 0.71）","ambiguity=0（confidence 0.78）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"brief","key":"novelty","answer":{"0":0.57,"1":0.42,"2":0.01},"confidence":0.34,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"brief","key":"coupling","answer":{"0":0,"1":0,"2":1},"confidence":1,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.79,"2":0.21},"confidence":0.69,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"pbi_quality","key":"targets_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"pbi_quality","key":"off_limits_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"pbi_quality","key":"criteria_checkable","answer":0.55,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"pbi_quality","key":"commands_runnable","answer":0.74,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"pbi_quality","key":"needs_outside_context","answer":0.36,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-015","gate":"model_selection","facts":{"files_changed":5,"files_new":5,"files_deleted":0,"modules":2,"criteria":5,"sensitive":false},"select":{"model":"opus","scores":{"novelty":0,"coupling":2,"ambiguity":0},"reasons":["決定: coupling=2","novelty=0（confidence 0.34）","coupling=2（confidence 1.00）","ambiguity=0（confidence 0.69 < 0.7 のため 1 を 0 に下げた）"]},"action":"adopted opus (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"brief","key":"novelty","answer":{"0":0.98,"1":0.02,"2":0},"confidence":0.97,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"brief","key":"coupling","answer":{"0":0.36,"1":0.22,"2":0.42},"confidence":0,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"brief","key":"ambiguity","answer":{"0":0,"1":0.56,"2":0.44},"confidence":0.34,"action":"used for model selection"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"pbi_quality","key":"targets_named","answer":0.97,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"pbi_quality","key":"off_limits_named","answer":0.98,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"pbi_quality","key":"criteria_checkable","answer":0.68,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"pbi_quality","key":"commands_runnable","answer":0.73,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"pbi_quality","key":"needs_outside_context","answer":0.31,"action":"warning only"}
+{"ts":"2026-10-10T09:32:13.869Z","pbi":"PBI-016","gate":"model_selection","facts":{"files_changed":21,"files_new":21,"files_deleted":0,"modules":2,"criteria":5,"sensitive":false},"select":{"model":"sonnet","scores":{"novelty":0,"coupling":1,"ambiguity":0},"reasons":["決定: novelty・coupling・ambiguity のどれかが 1 以上","novelty=0（confidence 0.97）","coupling=1（confidence 0.00 < 0.7 のため 2 を 1 に下げた）","ambiguity=0（confidence 0.34 < 0.7 のため 1 を 0 に下げた）"]},"action":"adopted sonnet (re-run after fixing stale env key)"}
+{"ts":"2026-10-10T18:37:31+09:00","pbi":"PBI-001","gate":"report","key":"classification","answer":"done_with_evidence","confidence":0.89,"action":"conf<0.9 -> orchestrator classified done_with_evidence; review pass; result=first-pass"}
+{"ts":"2026-10-10T18:44:09+09:00","pbi":"PBI-003","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:44:09+09:00","pbi":"PBI-002","gate":"report","key":"classification","answer":null,"confidence":null,"action":"orchestrator classified (report self-judged fail on cond4 caused by verification command; Jev skipped for this report); fixed verification command; review pass; result=first-pass"}
+{"ts":"2026-10-10T18:45:22+09:00","pbi":"PBI-004","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:45:58+09:00","pbi":"PBI-005","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:45:58+09:00","pbi":"PBI-006","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:45:58+09:00","pbi":"PBI-007","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:49:53+09:00","pbi":"PBI-008","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:51:59+09:00","pbi":"PBI-010","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:52:24+09:00","pbi":"PBI-009","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:54:43+09:00","pbi":"PBI-011","gate":"report","key":"classification","answer":"done_with_evidence","confidence":0.96,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:58:17+09:00","pbi":"PBI-013","gate":"report","key":"classification","answer":"done_with_evidence","confidence":0.96,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:58:17+09:00","pbi":"PBI-016","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T18:59:01+09:00","pbi":"PBI-012","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-10T19:02:28+09:00","pbi":"PBI-014","gate":"report","key":"classification","answer":"done_with_evidence","confidence":0.89,"action":"conf<0.9 -> orchestrator classified done_with_evidence; review pass; result=first-pass"}
+{"ts":"2026-10-10T19:09:45+09:00","pbi":"PBI-015","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}
+{"ts":"2026-10-11T04:02:29+09:00","pbi":"PBI-017","gate":"model_selection","facts":{"files_changed":2,"modules":2,"criteria":4,"sensitive":false},"select":"sonnet (modules=2)","action":"adopted sonnet; pbi_quality no warnings"}
+{"ts":"2026-10-11T04:04:58+09:00","pbi":"PBI-017","gate":"report","key":"classification","answer":"done_with_evidence","confidence":1.0,"action":"review pass; result=first-pass"}

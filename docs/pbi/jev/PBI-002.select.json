@@ -1,0 +1,1 @@
+{"model": "opus", "scores": {"novelty": 0, "coupling": 2, "ambiguity": 0}, "reasons": ["決定: coupling=2", "novelty=0（confidence 0.74）", "coupling=2（confidence 0.91）", "ambiguity=0（confidence 0.41 < 0.7 のため 1 を 0 に下げた）"]}

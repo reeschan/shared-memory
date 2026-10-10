@@ -1,0 +1,35 @@
+memories_dir: memories
+state_db: state/stats.sqlite
+cache_dir: .cache/embeddings
+opensearch:
+  url: http://127.0.0.1:9200
+  alias: memories
+  index_base: memories-qwen3-0.6b-v1
+  template_file: opensearch/index-template.json
+  pipeline_name: memories-hybrid
+  pipeline_file: opensearch/search-pipeline.json
+embedding:
+  url: http://127.0.0.1:11434
+  model: qwen3-embedding:0.6b
+  dimension: 1024
+  batch_size: 16
+  query_instruction: "Instruct: Given a question or keywords, retrieve memory notes that answer or relate to it\nQuery: "
+chunk:
+  min_chars: 400
+  max_chars: 800
+search:
+  candidates: 50
+  default_limit: 8
+  weights: { bm25: 0.4, knn: 0.6 }
+  searchable_tiers: [hot, warm]
+  half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }
+  provenance_factor: { human_confirmed: 1.0, agent_verified: 0.85, agent_inferred: 0.7 }
+tiers:
+  warm_after_days: 7
+  cold_after_days: 30
+  archive_after_days: 180
+mcp:
+  host: 127.0.0.1
+  port: 7820
+  path: /mcp
+repos: {}   # gc の symbol_ref 確認用。リポジトリ名 -> ローカルの絶対パス

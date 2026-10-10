@@ -1,0 +1,8 @@
+検証コマンドの出力:
+1. ParseFile x3 → OK OK OK OK
+2. register.ps1 -WhatIf -SkipHealthCheck → exit 0、claude/codex/kimi の登録、.kimi-code\mcp.json、CLAUDE.md、AGENTS.md の予定操作を表示
+3. register-tasks.ps1 -WhatIf → exit 0、SharedMemory-MCP/Decay/GC を表示
+4. 環境確認 → 出力なし
+5. head SKILL.md x2 → 1 行目 ---、name: と description: あり
+変更箇所: scripts/start-mcp.ps1 1-75, scripts/register-tasks.ps1 1-137, skills/mcp-setup/register.ps1 1-331, skills/mcp-setup/SKILL.md 1-65, skills/knowledge-import/SKILL.md 1-60 (すべて新規)
+自己判定: 条件1〜5 すべて pass

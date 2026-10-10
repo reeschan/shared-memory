@@ -1,0 +1,8 @@
+検証コマンドの出力:
+1. ls memories/global/*.md | wc -l → 20
+2. pnpm sm index --json → scanned 20, invalid [], embedded 20, upserted 20
+3. search 外部から接続… → 1 位「ポートはすべて 127.0.0.1 にだけバインドする」0.7068
+4. search ベクトル化… → 1 位「埋め込みモデルは Qwen3-Embedding-0.6B (1024 次元) を使う」0.8419
+5. grep README → 127.0.0.1 / pnpm sm reindex / register.ps1
+変更箇所: README.md 1-108 (新規), memories/global/*.md 20 ファイル (新規)
+自己判定: 条件1〜5 すべて pass

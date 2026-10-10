@@ -1,0 +1,7 @@
+検証コマンドの出力:
+1. ParseFile x2 → OK OK OK
+2. register-tasks -WhatIf | Select-String OutputEncoding → Decay と GC の 2 行
+3. grep default_tools_approval_mode → 47 行目
+4. register.ps1 -SelfTestSmokeParser → OK
+変更箇所: skills/mcp-setup/register.ps1 15,26,47,120-146,341-358; scripts/register-tasks.ps1 100,108
+自己判定: 条件1〜4 すべて pass

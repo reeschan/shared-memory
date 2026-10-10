@@ -1,0 +1,7 @@
+{
+  "name": "@shared-memory/indexer",
+  "type": "module",
+  "dependencies": {
+    "@shared-memory/core": "workspace:*"
+  }
+}

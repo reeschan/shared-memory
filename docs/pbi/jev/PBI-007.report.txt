@@ -1,0 +1,5 @@
+検証コマンドの出力:
+1. node --test stats.test.ts → # tests 5 / # pass 5 / # fail 0
+2. pnpm typecheck → $ tsc -p tsconfig.json、エラー出力なし
+変更箇所: packages/core/src/stats.ts (全体), packages/core/test/stats.test.ts (新規 5 件)
+自己判定: 条件1 pass, 条件2 pass, 条件3 pass (a〜e に 1 件ずつ対応)

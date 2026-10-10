@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "sm": "node packages/indexer/src/cli.ts",
+    "mcp": "node packages/mcp-server/src/server.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --test-reporter=tap \"packages/*/test/!(*.int).test.ts\"",
+    "test:int": "node --test --test-reporter=tap --test-concurrency=1 \"packages/*/test/*.int.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,6 @@
+検証コマンドの出力:
+1. search.test.ts → # tests 6 / # pass 6 / # fail 0
+2. search.int.test.ts → # tests 5 / # pass 5 / # fail 0
+3. pnpm typecheck → EXIT=0
+変更箇所: packages/core/src/search.ts 1-115, test/search.test.ts 1-82 (新規), test/search.int.test.ts 1-155 (新規)
+自己判定: 条件1〜3 pass, 条件4 (a)〜(f) pass, 条件5 (a)〜(e) pass

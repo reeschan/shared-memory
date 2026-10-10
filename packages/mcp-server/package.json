@@ -1,0 +1,9 @@
+{
+  "name": "@shared-memory/mcp-server",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@shared-memory/core": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

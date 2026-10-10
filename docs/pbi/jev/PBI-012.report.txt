@@ -1,0 +1,5 @@
+検証コマンドの出力:
+1. server.int.test.ts → # tests 7 / # pass 7 / # fail 0
+2. pnpm typecheck → exit=0
+変更箇所: packages/mcp-server/src/app.ts 1-246 (新規), src/server.ts 1-23, test/server.int.test.ts 1-160 (新規)
+自己判定: 条件1 pass, 条件2 pass, 条件3 (a)〜(g) すべて pass

@@ -1,0 +1,5 @@
+検証コマンドの出力:
+1. node --test chunk.test.ts → # tests 10 / # pass 10 / # fail 0
+2. pnpm typecheck → $ tsc -p tsconfig.json、エラー出力なし
+変更箇所: packages/core/src/chunk.ts (全面), packages/core/test/chunk.test.ts (新規 10 件)
+自己判定: 条件1 pass, 条件2 pass, 条件3 pass (a〜h それぞれ対応テストあり)

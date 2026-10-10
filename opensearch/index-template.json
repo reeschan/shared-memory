@@ -1,0 +1,44 @@
+{
+  "settings": {
+    "index": { "knn": true, "number_of_shards": 1, "number_of_replicas": 0 },
+    "analysis": {
+      "tokenizer": {
+        "sudachi_c": { "type": "sudachi_tokenizer", "split_mode": "C" }
+      },
+      "analyzer": {
+        "ja": {
+          "type": "custom",
+          "tokenizer": "sudachi_c",
+          "filter": ["sudachi_part_of_speech", "sudachi_normalizedform", "lowercase"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "memory_id":        { "type": "keyword" },
+      "chunk_no":         { "type": "integer" },
+      "path":             { "type": "keyword" },
+      "content_hash":     { "type": "keyword" },
+      "title":            { "type": "text", "analyzer": "ja" },
+      "content":          { "type": "text", "analyzer": "ja" },
+      "embedding": {
+        "type": "knn_vector",
+        "dimension": 1024,
+        "method": { "name": "hnsw", "engine": "faiss", "space_type": "cosinesimil" }
+      },
+      "scope":            { "type": "keyword" },
+      "kind":             { "type": "keyword" },
+      "provenance":       { "type": "keyword" },
+      "source_agent":     { "type": "keyword" },
+      "tags":             { "type": "keyword" },
+      "symbol_ref":       { "type": "keyword" },
+      "supersedes":       { "type": "keyword" },
+      "is_superseded":    { "type": "boolean" },
+      "created_at":       { "type": "date" },
+      "last_accessed_at": { "type": "date" },
+      "access_count":     { "type": "integer" },
+      "tier":             { "type": "keyword" }
+    }
+  }
+}

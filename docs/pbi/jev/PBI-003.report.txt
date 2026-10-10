@@ -1,0 +1,5 @@
+検証コマンドの出力:
+1. node --test (3 ファイル) → # tests 24 / # pass 24 / # fail 0
+2. pnpm typecheck → $ tsc -p tsconfig.json、エラー出力なし
+変更箇所: packages/core/src/config.ts, frontmatter.ts, secrets.ts (全体), packages/core/test/config.test.ts (4件), frontmatter.test.ts (12件), secrets.test.ts (8件)
+自己判定: 条件1 pass (24件), 条件2 pass, 条件3 pass (a〜f をテストで確認)

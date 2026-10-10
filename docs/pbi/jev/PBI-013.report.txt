@@ -1,0 +1,7 @@
+検証コマンドの出力:
+1. tiers.test.ts → # tests 9 / # pass 9 / # fail 0
+2. tiers.int.test.ts → # tests 4 / # pass 4 / # fail 0
+3. pnpm typecheck → exit=0
+4. pnpm sm → 使い方 (decay, gc を含む) を表示、exit=1
+変更箇所: packages/core/src/tiers.ts 1-151, packages/indexer/src/cli.ts 10-11,72-93, test/tiers.test.ts (新規), test/tiers.int.test.ts (新規)
+自己判定: 条件1〜6 すべて pass

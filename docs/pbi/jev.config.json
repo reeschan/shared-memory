@@ -1,0 +1,110 @@
+{
+  "version": "v3",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "model": "jev-1.13.0",
+  "thresholds": {
+    "quality_warn_below": 0.6,
+    "outside_context_warn_above": 0.4,
+    "report_confidence": 0.9,
+    "low_confidence": 0.7,
+    "rework_quality_rewrite_below": 0.6
+  },
+  "gates": {
+    "brief": {
+      "novelty": {
+        "type": "score",
+        "instructions": "この作業はどれくらい新しい仕組みを作るか",
+        "criteria": [
+          "既存の実装パターンをなぞる・置き換えるだけ",
+          "既存パターンに沿って型や関数を新しく足す",
+          "これまでに無い仕組みや契約を新しく設計する"
+        ]
+      },
+      "coupling": {
+        "type": "score",
+        "instructions": "この作業はどれくらい複数の部分の整合を取る必要があるか",
+        "criteria": [
+          "1つのモジュールの中で閉じる",
+          "隣り合う2つ程度のモジュールの呼び出し関係を合わせる",
+          "複数モジュールにまたがる不変条件や契約を守る必要がある"
+        ]
+      },
+      "ambiguity": {
+        "type": "score",
+        "instructions": "指示どおりに作業すれば済むか、作業者の判断が要るか",
+        "criteria": [
+          "指示どおりで済み、判断は要らない",
+          "細部で小さな判断が要る",
+          "仕様や設計の判断が要る"
+        ]
+      }
+    },
+    "pbi_quality": {
+      "targets_named": {
+        "type": "noul",
+        "instructions": "変更対象のファイルまたは関数が具体的な名前で示されているか",
+        "criteria": { "1": "すべての変更対象がファイルパスや関数名で特定されている", "0": "対象があいまい" }
+      },
+      "off_limits_named": {
+        "type": "noul",
+        "instructions": "触ってはいけない範囲が具体的な名前で示されているか",
+        "criteria": { "1": "触らない範囲がファイルパスや名前で特定されている", "0": "あいまいまたは無い" }
+      },
+      "criteria_checkable": {
+        "type": "noul",
+        "instructions": "受け入れ条件のすべてが、第三者が合否を判定できる書き方になっているか",
+        "criteria": { "1": "すべての条件がコマンド結果やコードの有無で判定できる", "0": "主観的な条件がある" }
+      },
+      "commands_runnable": {
+        "type": "noul",
+        "instructions": "検証コマンドが、そのまま実行できる形で書かれているか",
+        "criteria": { "1": "コピーしてそのまま実行できる", "0": "穴埋めや解釈が必要" }
+      },
+      "needs_outside_context": {
+        "type": "noul",
+        "instructions": "このPBIに書かれていない情報がないと作業を始められないか",
+        "criteria": { "1": "書かれていない情報が必要", "0": "このPBIとリポジトリだけで始められる" }
+      }
+    },
+    "report": {
+      "classification": {
+        "type": "choice",
+        "instructions": "サブエージェントの報告を仕分ける",
+        "criteria": {
+          "done_with_evidence": "検証コマンドの出力と変更箇所がそろっている",
+          "status_only": "途中経過の報告で検証結果がない",
+          "blocked": "情報や権限が足りず進めないと述べている",
+          "other": "どれにも当てはまらない"
+        }
+      }
+    },
+    "rework_scope": {
+      "fix_scope": {
+        "type": "score",
+        "instructions": "指摘を直すのにどの規模の見直しが要るか",
+        "criteria": [
+          "指示どおりの修正で済む",
+          "実装方針の一部を見直す必要がある",
+          "設計から見直す必要がある"
+        ]
+      }
+    },
+    "rework_quality": {
+      "names_condition": {
+        "type": "noul",
+        "instructions": "どの受け入れ条件が fail かを番号で示しているか",
+        "criteria": { "1": "番号で示している", "0": "示していない" }
+      },
+      "states_current_and_expected": {
+        "type": "noul",
+        "instructions": "現状と期待の両方を書いているか",
+        "criteria": { "1": "両方ある", "0": "欠けている" }
+      },
+      "has_repro": {
+        "type": "noul",
+        "instructions": "失敗を確認する手順またはコマンドを書いているか",
+        "criteria": { "1": "ある", "0": "ない" }
+      }
+    }
+  }
+}

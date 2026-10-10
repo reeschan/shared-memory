@@ -1,0 +1,6 @@
+検証コマンドの出力:
+1. memory-store.test.ts → # tests 6 / # pass 6 / # fail 0
+2. memory-store.int.test.ts → # tests 5 / # pass 5 / # fail 0
+3. pnpm typecheck → EXIT=0
+変更箇所: packages/core/src/memory-store.ts 1-130, test/memory-store.test.ts 1-90 (新規), test/memory-store.int.test.ts 1-107 (新規)
+自己判定: 条件1〜5 すべて pass

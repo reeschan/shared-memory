@@ -1,0 +1,1 @@
+{"model": "sonnet", "scores": {"novelty": 0, "coupling": 0, "ambiguity": 0}, "reasons": ["決定: modules=2 >= 2", "novelty=0（confidence 0.34 < 0.7 のため 1 を 0 に下げた）", "coupling=0（confidence 0.00）", "ambiguity=0（confidence 0.91）"]}

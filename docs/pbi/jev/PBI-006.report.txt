@@ -1,0 +1,6 @@
+検証コマンドの出力:
+1. node --test opensearch.int.test.ts → # tests 7 / # pass 7 / # fail 0
+2. pnpm typecheck → $ tsc -p tsconfig.json、エラー出力なし
+3. _cat/indices → .plugins-ml-config, top_queries-2026.10.10-59490 (test-pbi006 なし)
+変更箇所: packages/core/src/opensearch.ts 1-148, packages/core/test/opensearch.int.test.ts 1-103
+自己判定: 条件1 pass, 条件2 pass, 条件3 pass, 条件4 pass (a〜g をテスト1〜7で確認)

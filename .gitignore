@@ -1,0 +1,7 @@
+node_modules/
+.cache/
+*.log
+state/*.sqlite-journal
+state/*.sqlite-wal
+state/*.sqlite-shm
+.env
