@@ -27,7 +27,19 @@
 
 データの流れ: エージェント → MCP サーバー → Markdown / SQLite / OpenSearch。埋め込みは Ollama (Qwen3-Embedding-0.6B、1024 次元) をローカルで呼ぶ。
 
-冒頭の図のソースは `docs/architecture/architecture.d2`。構成を変えたら直して、`python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2` で `architecture-light.svg` / `architecture-dark.svg` を描き直す。
+### インデックス作成と検索の流れ
+
+埋め込みモデル (Ollama) と OpenSearch のつながり。緑の線がインデックス作成、オレンジの線が検索。
+
+- インデックス作成: Markdown をチャンクに分け、`content_hash` が変わったチャンクだけをインストラクションなしで埋め込む (キャッシュがあれば使う)。本文は BM25 用のフィールドへ、1024 次元のベクトルは `knn_vector` フィールドへ、同じドキュメントとして投入する。
+- 検索: クエリに検索用インストラクションを付けて埋め込み、kNN と BM25 (Sudachi) を 1 回のハイブリッドクエリで投げる。Search Pipeline が両方のスコアを正規化して 0.4 : 0.6 で合成し、MCP サーバーが時間減衰・アクセス回数・出所の係数で再スコアしてメモリ単位にまとめる。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/data-flow-dark.svg">
+  <img src="docs/architecture/data-flow-light.svg" alt="インデックス作成と検索の流れの図。インデックス作成では Markdown をチャンク分割し、content_hash が変わったチャンクだけをキャッシュ経由で Ollama (Qwen3-Embedding-0.6B) に送り、文書ベクトルを OpenSearch の knn_vector フィールドへ、本文を Sudachi で解析する BM25 用フィールドへ投入する。検索ではクエリに検索用インストラクションを付けて Ollama で埋め込み、クエリベクトルで kNN、クエリの語で BM25 を検索し、Search Pipeline が min_max 正規化して BM25 0.4 と kNN 0.6 で合成した後、MCP サーバーが再スコアして memory_id ごとに上位 8 件にまとめる。" width="560">
+</picture>
+
+図のソースは `docs/architecture/architecture.d2` (全体) と `docs/architecture/data-flow.d2` (流れ)。構成を変えたら直して、`python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/<名前>.d2` で `<名前>-light.svg` / `<名前>-dark.svg` を描き直す。
 
 ## 前提
 
