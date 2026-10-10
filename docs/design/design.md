@@ -372,7 +372,7 @@ shared-memory/
 
 | 項目 | 設計 | 実装 | 理由 |
 | --- | --- | --- | --- |
-| GitHub のリモート | プライベート (7章・9章) | public (`reeschan/shared-memory`) | 作成時の判断。memories/ と stats.sqlite も公開されるので、仕事の内容を入れるならプライベートに切り替える |
+| 知識の置き場所 | コードと同じプライベートリポジトリ (7章・9章) | コードのリポジトリ (`reeschan/shared-memory`) は public。知識の本体は `config.local.yaml` の `memories_dir` で指す場所 (この PC では Proton Drive の `AI\knowledge-base\memories`) に置き、統計の SQLite は PC ごとにローカル | コードは公開し、知識は公開しないため。同期フォルダでは SQLite が壊れやすいので統計は同期しない |
 | `content_hash` の範囲 | 差分判定と埋め込みキャッシュのキー | チャンク本文に加えて title・scope・tags などのメタデータも含める | タグなどだけを変えたときも再投入されるようにするため。代わりにメタデータの変更でも再埋め込みが走る (ローカルなので時間だけ) |
 | 一度も読まれていないメモリの tier | 最終アクセス日から計算 | `last_accessed_at` が無ければ `created_at` から数える | 作っただけのメモリにも降格を効かせるため |
 | 置き換え済みメモリの archive 送り | `gc` (週1回) | `gc` に加えて `decay` (毎日) でも archive にする | 置き換えた翌日には検索から外れるようにするため |

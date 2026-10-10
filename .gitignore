@@ -5,3 +5,6 @@ state/*.sqlite-journal
 state/*.sqlite-wal
 state/*.sqlite-shm
 .env
+config.local.yaml
+state/*.sqlite
+memories/

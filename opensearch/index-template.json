@@ -1,6 +1,6 @@
 {
   "settings": {
-    "index": { "knn": true, "number_of_shards": 1, "number_of_replicas": 0 },
+    "index": { "knn": true, "knn.derived_source.enabled": false, "number_of_shards": 1, "number_of_replicas": 0 },
     "analysis": {
       "tokenizer": {
         "sudachi_c": { "type": "sudachi_tokenizer", "split_mode": "C" }

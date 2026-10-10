@@ -36,14 +36,41 @@ function Get-NodePath {
     return $path
 }
 
+# TypeScript を直接実行できる Node (24 以上) を返す。
+# タスクスケジューラから起動すると fnm の環境が無く、PATH の node が古い版になることがあるため、
+# その場合は fnm がインストールした版のうち一番新しいものを使う
+function Get-TsNodePath {
+    $path = Get-NodePath
+    if ($path -and (Test-NodeMajor $path)) { return $path }
+    $versions = Join-Path $env:APPDATA 'fnm\node-versions'
+    if (Test-Path $versions) {
+        $found = Get-ChildItem $versions -Directory -Filter 'v*' |
+            Sort-Object { [version]($_.Name.TrimStart('v')) } -Descending |
+            ForEach-Object { Join-Path $_.FullName 'installation\node.exe' } |
+            Where-Object { (Test-Path $_) -and (Test-NodeMajor $_) } |
+            Select-Object -First 1
+        if ($found) { return $found }
+    }
+    return $null
+}
+
+function Test-NodeMajor([string]$path) {
+    try {
+        $v = (& $path -v) -replace '^v', ''
+        return ([version]$v).Major -ge 24
+    } catch {
+        return $false
+    }
+}
+
 if (Test-McpHealth) {
     Write-Output "MCP サーバーは起動済みです ($HealthUrl)"
     exit 0
 }
 
-$node = Get-NodePath
+$node = Get-TsNodePath
 if (-not $node) {
-    Write-Error 'node が PATH に見つかりません'
+    Write-Error 'Node 24 以上が見つかりません (PATH と fnm の node-versions を探しました)'
     exit 1
 }
 

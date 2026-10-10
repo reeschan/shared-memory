@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isAbsolute, join } from "node:path";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { findRoot, loadConfig } from "../src/config.ts";
@@ -39,4 +39,24 @@ test("loadConfig は必須キー欠けで throw", () => {
   writeFileSync(join(dir, "config.yaml"), "memories_dir: memories\n");
   writeFileSync(join(dir, "pnpm-workspace.yaml"), "packages: []\n");
   assert.throws(() => loadConfig(dir), /必須キー/);
+});
+
+test("loadConfig は config.local.yaml を重ねる (マップは再帰的に、それ以外は上書き)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "sm-local-"));
+  writeFileSync(join(dir, "pnpm-workspace.yaml"), "packages: []\n");
+  writeFileSync(
+    join(dir, "config.yaml"),
+    readFileSync(join(repoRoot, "config.yaml"), "utf8").replace(/^repos:.*$/m, "repos: { a: /x }"),
+  );
+  const store = join(dir, "store", "memories");
+  writeFileSync(
+    join(dir, "config.local.yaml"),
+    `memories_dir: ${JSON.stringify(store)}\nsearch:\n  weights: { knn: 0.7 }\nrepos: { b: /y }\n`,
+  );
+  const cfg = loadConfig(dir);
+  assert.equal(cfg.memories_dir, store);
+  assert.equal(cfg.search.weights.knn, 0.7);
+  assert.equal(cfg.search.weights.bm25, 0.4);
+  assert.equal(cfg.search.candidates, 50);
+  assert.deepEqual(cfg.repos, { a: "/x", b: "/y" });
 });

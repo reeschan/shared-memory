@@ -11,7 +11,7 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 - CLI: `pnpm --dir <ROOT> sm import <file> --dry-run` (検証のみ) → 承認後 `pnpm --dir <ROOT> sm import <file>`。
   - `pnpm --dir` で実行すると CLI の作業ディレクトリが `<ROOT>` になる。**JSONL は必ず絶対パスで渡す** (相対パスは `<ROOT>` 基準で解釈される)。
   - 必要なら `--source-agent <claude|codex|kimi|human>` で、行に `source_agent` が無いときの既定値を指定できる。
-- 候補の JSONL は `<ROOT>\.cache\import\<日時>.jsonl` (例 `C:\Users\owner\dev\shared-memory\.cache\import\20261010-143000.jsonl`) に書く。`.cache/` は Git 管理外。
+- 候補の JSONL は、知識の保存先 (`memories_dir` の 1 つ上のフォルダ、以下 `<STORE>`) の `import\<日時>.jsonl` に書く。`memories_dir` は `<ROOT>\config.local.yaml` (無ければ `<ROOT>\config.yaml`) で確かめる。例: `...\AI\knowledge-base\import\20261010-143000.jsonl`
 
 ## 手順
 
@@ -20,10 +20,10 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
    - `scope`: `global` / `project:<名前>` / `repo:<名前>` (`<名前>` は英数字と `._-` のみ)
    - `kind`: `episodic` (出来事) / `semantic` (知識)
 3. **既存メモリとの照合** — 候補ごとに MCP の `search` (`shared-memory`) で既存メモリを調べ、必要なら `get` で本文を読む。同じ内容があれば候補から除外し、更新にあたる場合は古いメモリの `id` を `supersedes` に入れる。
-4. **JSONL に書き出して検証** — 候補を `<ROOT>\.cache\import\<日時>.jsonl` に 1 行 1 メモリで書き (UTF-8)、`pnpm --dir <ROOT> sm import <JSONLの絶対パス> --dry-run` で検証する。エラーが出た行は直して再度 dry-run する。
+4. **JSONL に書き出して検証** — 候補を `<STORE>\import\<日時>.jsonl` に 1 行 1 メモリで書き (UTF-8)、`pnpm --dir <ROOT> sm import <JSONLの絶対パス> --dry-run` で検証する。エラーが出た行は直して再度 dry-run する。
 5. **人の承認** — 候補の一覧 (新規・置き換え・除外の件数と、各候補の title / scope / kind / 置き換え先) をユーザーに見せ、承認を得る。承認なしに次へ進まない。
 6. **登録** — `pnpm --dir <ROOT> sm import <JSONLの絶対パス>` を実行する。Markdown ファイルがまとめて作成され、インデックスは 1 回だけ更新される。
-7. **報告** — 作成件数を報告し、`<ROOT>` で `git status` / `git diff` を確認してコミットするようユーザーに促す (コミットは人が行う)。
+7. **報告** — 作成件数と、作成したファイルの場所 (`memories_dir` の下) を報告する。保存先が Git リポジトリなら、差分を確かめてコミットするよう促す。
 
 ## JSONL の 1 行の形式
 

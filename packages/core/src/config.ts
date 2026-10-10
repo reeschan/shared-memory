@@ -78,10 +78,31 @@ const REQUIRED = [
   "mcp.host", "mcp.port", "mcp.path",
 ];
 
-export function loadConfig(root?: string): Config {
-  const r = root ? resolve(root) : findRoot();
+/** マップは再帰的に重ね、それ以外 (配列を含む) は上書きする */
+function merge(base: Record<string, unknown>, over: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base };
+  for (const [k, v] of Object.entries(over)) {
+    const b = out[k];
+    out[k] = isObj(b) && isObj(v) ? merge(b, v) : v;
+  }
+  return out;
+}
+
+/** config.yaml に、あれば config.local.yaml (PC ごとの設定。Git 管理外) を重ねる */
+function readRaw(r: string): Record<string, unknown> {
   const raw: unknown = parse(readFileSync(join(r, "config.yaml"), "utf8"));
   if (!isObj(raw)) throw new Error("config.yaml: トップレベルがマップではありません");
+  const localFile = join(r, "config.local.yaml");
+  if (!existsSync(localFile)) return raw;
+  const local: unknown = parse(readFileSync(localFile, "utf8"));
+  if (local === null || local === undefined) return raw;
+  if (!isObj(local)) throw new Error("config.local.yaml: トップレベルがマップではありません");
+  return merge(raw, local);
+}
+
+export function loadConfig(root?: string): Config {
+  const r = root ? resolve(root) : findRoot();
+  const raw = readRaw(r);
   for (const p of REQUIRED) need(raw, p);
   const abs = (p: string): string => (isAbsolute(p) ? p : resolve(r, p));
   const c = raw as unknown as Omit<Config, "root">;

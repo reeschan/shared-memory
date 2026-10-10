@@ -14,8 +14,9 @@
 
 ## 構成
 
-- `memories/` … 正。1 メモリ 1 ファイルの Markdown (`memories/<scope>/<id>.md`)
-- `state/stats.sqlite` … アクセス統計 (アクセス回数、最終アクセス日、tier)。Git 管理する
+- 知識の本体 (Markdown) … 正。このリポジトリには置かず、`config.local.yaml` の `memories_dir` が指す場所 (同期フォルダや private リポジトリ) に `<scope>/<id>.md` で置く
+- `state/stats.sqlite` … アクセス統計 (アクセス回数、最終アクセス日、tier)。PC ごとにローカルに置き、Git 管理しない
+- `config.local.yaml` … PC ごとの設定 (Git 管理外)。例は `config.local.example.yaml`
 - `opensearch/` … OpenSearch + Sudachi の Dockerfile、インデックステンプレート、Search Pipeline
 - `packages/core` … front matter 検証、チャンク分割、埋め込みクライアント、検索などの共通処理
 - `packages/indexer` … CLI (`pnpm sm <command>`)
@@ -55,6 +56,7 @@
 git clone <このリポジトリの URL> shared-memory
 cd shared-memory
 pnpm install
+cp config.local.example.yaml config.local.yaml   # memories_dir を知識の保存先に書き換える
 ollama pull qwen3-embedding:0.6b
 docker compose up -d --build
 pnpm sm reindex
@@ -63,7 +65,7 @@ skills/mcp-setup/register.ps1
 ```
 
 1. リポジトリを clone する。
-2. `pnpm install` で依存を入れる。
+2. `pnpm install` で依存を入れ、`config.local.yaml` を作って `memories_dir` に知識の保存先 (末尾のフォルダ名は `memories`) を書く。
 3. `ollama pull qwen3-embedding:0.6b` で埋め込みモデルを取得する。
 4. `docker compose up -d --build` で OpenSearch (Sudachi 入り) を起動する。
 5. `pnpm sm reindex` で Markdown から全件をインデックスする。
@@ -117,17 +119,18 @@ MCP のエンドポイントは `http://127.0.0.1:7820/mcp`。
 
 | 対象 | 保全方法 | 失った場合 |
 | --- | --- | --- |
-| Markdown | Git のリモートへ push | 復元できない。ここだけは必ず守る |
+| Markdown | 保存先に任せる (同期フォルダならクラウド側、private リポジトリなら push) | 復元できない。ここだけは必ず守る |
 | 構築一式 (Dockerfile、マッピング、辞書、コード) | 同じリポジトリで Git 管理 | 同上 |
-| SQLite の統計 | 同じリポジトリにコミット | 検索は動く。優先度の履歴が初期化される |
+| SQLite の統計 | 保全しない (PC ごと) | 検索は動く。優先度の履歴が初期化される |
 | OpenSearch のデータ | 保全しない | `pnpm sm reindex` で再生成 |
 | 埋め込みキャッシュ | 保全しない | 再埋め込みの時間がかかるだけ |
 
 ## 運用ルール
 
-- `write` の結果は、Git の差分を見てから人がコミットする。
-- SQLite (`state/stats.sqlite`) はバイナリで競合を自動マージできないため、主に使う 1 台だけでコミットする。
-- 秘密情報 (API キーなど) をメモリに書かない。リモートリポジトリはプライベートにする。
+- このリポジトリ (コード) は public。知識の本体は `memories_dir` の先に置き、ここにはコミットしない。
+- 統計の SQLite は同期フォルダに置かない (同時に書くと壊れたり、競合ファイルができたりする)。
+- 別の PC で書かれたメモリは同期で届くだけなので、`pnpm sm index` を流すとインデックスに入る。
+- 秘密情報 (API キーなど) をメモリに書かない。
 - ポートはすべて `127.0.0.1` 限定。バインド先を変えるなら、OpenSearch のセキュリティを有効に戻す (現在は認証なしで動かしている)。
 - 埋め込みモデルやマッピングを変えるときは、新しいインデックス名で `pnpm sm reindex` する。
 

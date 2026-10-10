@@ -1,0 +1,9 @@
+# PC ごとの設定の例。config.local.yaml にコピーして使う (config.local.yaml は Git 管理外)
+# config.yaml の同じキーを上書きする (マップは再帰的に重ね、それ以外は置き換える)
+
+# 知識 (Markdown) の保存先。Google Drive / OneDrive / Proton Drive などの同期フォルダや、
+# private の Git リポジトリの中を絶対パスで指す。フォルダ名は memories にする
+memories_dir: 'C:\Users\<you>\Proton Drive\<account>\My files\AI\knowledge-base\memories'
+
+# 統計の SQLite は同期フォルダに置かない (同時書き込みで壊れたり競合ファイルができたりする)
+# state_db: state/stats.sqlite
