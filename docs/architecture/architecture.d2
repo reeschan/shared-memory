@@ -1,0 +1,118 @@
+# shared-memory のアーキテクチャ図
+# __MONO__ は単色ロゴの色。render.py がライト用 (000000) とダーク用 (ffffff) に置き換えて 2 枚描く
+# 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2
+direction: right
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 40
+  }
+}
+
+classes: {
+  svc: {
+    shape: rectangle
+    style: {
+      border-radius: 12
+      font-size: 15
+    }
+  }
+  ext: {
+    shape: image
+    width: 64
+    height: 64
+    label.near: outside-bottom-center
+  }
+  zone: {
+    style.border-radius: 16
+  }
+  saas: {
+    style: {
+      border-radius: 16
+      stroke-dash: 3
+    }
+  }
+}
+
+dev: 開発者 {
+  class: ext
+  icon: https://icons.terrastruct.com/essentials%2F005-programmer.svg
+}
+
+agents: エージェント {
+  class: saas
+  direction: down
+
+  claude: Claude Code {
+    class: ext
+    icon: https://cdn.simpleicons.org/anthropic/__MONO__
+  }
+  codex: Codex {
+    shape: hexagon
+    width: 90
+  }
+  kimi: Kimi Code {
+    class: ext
+    icon: https://cdn.simpleicons.org/moonshotai/__MONO__
+  }
+}
+
+pc: "ローカル PC (127.0.0.1 のみ)" {
+  class: zone
+  icon: https://icons.terrastruct.com/tech%2Flaptop.svg
+
+  app: "アプリ (packages/core を共有)" {
+    class: zone
+    direction: down
+    icon: https://cdn.simpleicons.org/typescript
+
+    mcp: "MCP サーバー\nsearch / get / write" {
+      class: svc
+      icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+    }
+    cli: "CLI (pnpm sm)\nindex / reindex / import / decay / gc" {
+      class: svc
+      icon: https://cdn.simpleicons.org/nodedotjs
+    }
+  }
+  sched: "タスクスケジューラ\ndecay 毎日 / gc 毎週" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
+  }
+  md: "Markdown\n唯一の正 (memories/)" {
+    class: svc
+    icon: https://cdn.simpleicons.org/markdown/__MONO__
+  }
+  sqlite: "SQLite\nアクセス統計・tier" {
+    class: svc
+    icon: https://cdn.simpleicons.org/sqlite
+  }
+  ollama: "Ollama\nQwen3-Embedding-0.6B" {
+    class: svc
+    icon: https://cdn.simpleicons.org/ollama/__MONO__
+  }
+  docker: Docker {
+    class: zone
+    icon: https://cdn.simpleicons.org/docker
+
+    os: "OpenSearch + Sudachi\nBM25 + kNN (派生)" {
+      class: svc
+      icon: https://cdn.simpleicons.org/opensearch
+    }
+  }
+}
+
+github: "GitHub\nバックアップ" {
+  class: ext
+  icon: https://cdn.simpleicons.org/github/__MONO__
+}
+
+agents -> pc.app.mcp: MCP (Streamable HTTP)
+pc.sched -> pc.app.cli: 定期実行 {style.stroke-dash: 4}
+pc.app -> pc.md: 読む・新規作成
+pc.app -> pc.ollama: 埋め込み
+pc.app -> pc.docker.os: 投入・ハイブリッド検索
+pc.app -> pc.sqlite: アクセス統計・tier
+dev -> pc.md: 差分を見てコミット
+pc.md -> github: push {style.stroke-dash: 4}

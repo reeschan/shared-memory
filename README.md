@@ -2,6 +2,11 @@
 
 複数の AI エージェント (Claude Code / Codex / Kimi) と自分自身が共通で参照する知識ベースを、ローカル PC 内で完結する RAG として動かすリポジトリ。Markdown ファイルを唯一の正とし、OpenSearch はいつでも再構築できる派生インデックスとして扱う。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg">
+  <img src="docs/architecture/architecture-light.svg" alt="shared-memory のアーキテクチャ図。Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送り、MCP サーバーと CLI が共有する core が Markdown (正)・SQLite (アクセス統計)・Ollama (埋め込み)・Docker 上の OpenSearch + Sudachi (派生インデックス) を使う。タスクスケジューラが CLI の decay / gc を定期実行し、開発者は Markdown の差分を見てコミットして GitHub に push する。">
+</picture>
+
 設計の詳細は次を参照。
 
 - [設計書](docs/design/design.md)
@@ -21,6 +26,8 @@
 - `.cache/` … 埋め込みキャッシュ (Git 管理しない)
 
 データの流れ: エージェント → MCP サーバー → Markdown / SQLite / OpenSearch。埋め込みは Ollama (Qwen3-Embedding-0.6B、1024 次元) をローカルで呼ぶ。
+
+冒頭の図のソースは `docs/architecture/architecture.d2`。構成を変えたら直して、`python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2` で `architecture-light.svg` / `architecture-dark.svg` を描き直す。
 
 ## 前提
 
