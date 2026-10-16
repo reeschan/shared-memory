@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  SOURCE_AGENTS,
   memoryRelPath,
   parseMemoryFile,
   scopeToDir,
@@ -67,6 +68,14 @@ test("列挙外の値はエラー", () => {
   const r = parseMemoryFile(SAMPLE.replace("kind: semantic", "kind: bogus"), PATH);
   assert.equal(r.ok, false);
   if (!r.ok) assert.ok(r.errors.some((e) => e.includes("kind")));
+});
+
+test("source_agent grok は受け付ける", () => {
+  assert.ok(SOURCE_AGENTS.includes("grok"));
+  assert.deepEqual(validateMeta({ ...baseMeta(), source_agent: "grok" }), []);
+  const r = parseMemoryFile(SAMPLE.replace("source_agent: human", "source_agent: grok"), PATH);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.memory.source_agent, "grok");
 });
 
 test("ULID でない id はエラー", () => {
