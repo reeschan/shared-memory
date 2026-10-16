@@ -57,7 +57,7 @@ Oct 10, 2026 · @Ryuki Tobita
 | `scope` | ○ | `global` / `project:<名前>` / `repo:<名前>` |
 | `kind` | ○ | `episodic`(出来事) / `semantic`(知識) |
 | `provenance` | ○ | `human_confirmed` / `agent_verified` / `agent_inferred` |
-| `source_agent` | ○ | `human` / `claude` / `codex` / `kimi` |
+| `source_agent` | ○ | `human` / `claude` / `codex` / `kimi` / `grok` |
 | `created_at` | ○ | 作成日(ISO 8601) |
 | `supersedes` |  | 置き換える元メモリの `id` |
 | `symbol_ref` |  | Serenaの `name_path`(コード関連のメモリのみ) |
