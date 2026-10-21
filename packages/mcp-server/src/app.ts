@@ -18,6 +18,7 @@ import {
   evalDir,
   readMemory,
   recordAccess,
+  scanMemories,
   searchMemories,
   writeMemory,
   type Config,
@@ -26,7 +27,7 @@ import {
   type SearchLogEntry,
   type WriteInput,
 } from "@shared-memory/core";
-import { handleFeedback } from "./feedback-routes.ts";
+import { handleFeedback, type FeedbackContext } from "./feedback-routes.ts";
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
@@ -244,7 +245,17 @@ export async function startServer(cfg: Config): Promise<{ port: number; close():
   }
 
   let allowedHosts = new Set<string>();
-  const feedbackCtx = { dir: evalDir(cfg), staticDir: STATIC_DIR };
+  const feedbackCtx: FeedbackContext = {
+    dir: evalDir(cfg),
+    staticDir: STATIC_DIR,
+    // ファイルを直接読む (recordAccess もログも通さない)。画面を開いたときに 1 回だけ全体を走査する
+    readBodies: async (ids) => {
+      const want = new Set(ids);
+      const out = new Map<string, string>();
+      for (const m of (await scanMemories(cfg)).memories) if (want.has(m.id)) out.set(m.id, m.body);
+      return out;
+    },
+  };
 
   const handleMcp = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const raw = await readBody(req);

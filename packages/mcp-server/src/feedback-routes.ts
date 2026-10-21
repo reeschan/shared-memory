@@ -19,7 +19,18 @@ import {
 } from "@shared-memory/core";
 import { readBody, sendJson } from "./app.ts";
 
-export type FeedbackContext = { dir: string; staticDir: string };
+export type FeedbackContext = {
+  dir: string;
+  staticDir: string;
+  /**
+   * 結果のカードに全文を添えるための読み出し (memory_id → 本文)。セッションには抜粋しか無いので、
+   * 画面が開いて読むときにここで足す。アクセスもログも書かない読み方にすること。無ければ全文を添えない
+   */
+  readBodies?: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
+};
+
+/** 画面に渡す全文の上限 (文字)。これを超える分は切って末尾に「…」を付ける */
+export const BODY_MAX_CHARS = 4000;
 
 const PREFIX = "/feedback/";
 const STATIC_SEGMENT = "static";
@@ -86,7 +97,36 @@ async function sendData(res: ServerResponse, ctx: FeedbackContext, id: string, t
       human: questions.filter((q) => q.labels.some((l) => l.source === "human")).length,
     },
   };
-  sendJson(res, 200, { session: publicView(s), dashboard }, NO_STORE);
+  sendJson(res, 200, { session: await withBodies(publicView(s), ctx), dashboard }, NO_STORE);
+}
+
+/** カードに body (全文) を足す。読めなかったときは全文なしで返す (画面は抜粋だけを出す) */
+async function withBodies(view: ReturnType<typeof publicView>, ctx: FeedbackContext): Promise<ReturnType<typeof publicView>> {
+  if (ctx.readBodies === undefined) return view;
+  const ids = [...new Set(view.items.flatMap((it) => it.cards.map((c) => c.id)))];
+  if (ids.length === 0) return view;
+  let bodies: ReadonlyMap<string, string>;
+  try {
+    bodies = await ctx.readBodies(ids);
+  } catch (e) {
+    console.error(`警告: フィードバックの画面に全文を添えられませんでした: ${e instanceof Error ? e.message : String(e)}`);
+    return view;
+  }
+  return {
+    ...view,
+    items: view.items.map((it) => ({
+      ...it,
+      cards: it.cards.map((c) => {
+        const b = bodies.get(c.id);
+        return b === undefined ? c : { ...c, body: capBody(b) };
+      }),
+    })),
+  };
+}
+
+function capBody(text: string): string {
+  const chars = Array.from(text.trim());
+  return chars.length <= BODY_MAX_CHARS ? chars.join("") : chars.slice(0, BODY_MAX_CHARS).join("") + "…";
 }
 
 function isJsonContentType(req: IncomingMessage): boolean {

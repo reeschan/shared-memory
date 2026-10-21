@@ -35,6 +35,8 @@
   /** モードを切り替えたときに描き直すための、最後に読んだデータと完了の画面の中身 */
   /** @type {any} */ let lastData = null;
   /** @type {any} */ let lastDone = null;
+  /** 全文を開いているカード (qid と memory_id の組)。問いを移っても、モードを変えても保つ */
+  const expanded = new Set();
 
   // ---- 小さな道具 ----
   function $(id) {
@@ -680,9 +682,33 @@
         if (!check.checked && k >= 0) en.stale_ids.splice(k, 1);
         changed();
       });
+      // 抜粋は検索側で切られている。サーバーが全文 (body) を添えたときだけ、開閉できるようにする
+      const full = typeof c.body === "string" ? c.body : "";
+      const hasMore = full !== "" && Array.from(full.replace(/\s+/g, " ").trim()).length > Array.from(c.excerpt.trim()).length;
+      const openKey = it.qid + "\u0000" + c.id;
+      const isOpen = hasMore && expanded.has(openKey);
+      const bodyId = name + "-body";
+      const excerptEl = h("p", { class: "result-excerpt", hidden: isOpen }, c.excerpt + (hasMore ? "…" : ""));
+      const fullEl = hasMore ? h("div", { class: "result-body", id: bodyId, hidden: !isOpen }, full) : null;
+      let toggle = null;
+      if (hasMore) {
+        const btn = h("button", { type: "button", class: "result-toggle", "aria-expanded": isOpen ? "true" : "false", "aria-controls": bodyId }, isOpen ? "閉じる" : "全文を開く");
+        btn.addEventListener("click", () => {
+          const open = !expanded.has(openKey);
+          if (open) expanded.add(openKey);
+          else expanded.delete(openKey);
+          excerptEl.hidden = open;
+          /** @type {HTMLElement} */ (fullEl).hidden = !open;
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          btn.textContent = open ? "閉じる" : "全文を開く";
+        });
+        toggle = btn;
+      }
       const body = h("div", null, [
         h("p", { class: "result-title", id: titleId }, c.title),
-        h("p", { class: "result-excerpt" }, c.excerpt),
+        excerptEl,
+        fullEl,
+        toggle,
         metaRow,
         h("label", { class: "stale-check" }, [check, "新しい版があり、これは古い"]),
       ]);

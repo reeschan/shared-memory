@@ -312,6 +312,18 @@ button, input { font: inherit; color: inherit; }
 .result-no { font-family: var(--theme-font-mono); font-size: 0.875rem; color: var(--muted-foreground); }
 .result-title { font-weight: 700; }
 .result-excerpt { margin-top: calc(var(--s) * 1); font-size: 0.875rem; line-height: 1.7; color: var(--muted-foreground); }
+.result-body {
+  margin-top: calc(var(--s) * 1);
+  max-height: 24rem; overflow-y: auto; overflow-wrap: anywhere;
+  padding-left: calc(var(--s) * 3); border-left: 2px solid var(--border);
+  font-size: 0.875rem; line-height: 1.7; white-space: pre-wrap; color: var(--foreground);
+}
+.result-toggle {
+  margin-top: calc(var(--s) * 1); padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 0.8125rem; color: var(--accent-foreground); text-decoration: underline; text-underline-offset: 0.2em;
+}
+.result-toggle:hover { color: var(--foreground); }
+.result-toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .result-meta { margin-top: calc(var(--s) * 2); display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--s) * 1) calc(var(--s) * 3); font-family: var(--theme-font-mono); font-size: 0.75rem; color: var(--muted-foreground); }
 .stale-check { margin-top: calc(var(--s) * 3); display: inline-flex; align-items: center; gap: calc(var(--s) * 2); font-size: 0.875rem; cursor: pointer; }
 .stale-check input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--primary); }

@@ -17,7 +17,7 @@ import {
   type SearchResult,
   type SessionSearcher,
 } from "@shared-memory/core";
-import { handleFeedback } from "../src/feedback-routes.ts";
+import { BODY_MAX_CHARS, handleFeedback } from "../src/feedback-routes.ts";
 
 // テストのデータはすべて作ったダミー (本物の記憶の ID・本文は使わない)。OpenSearch も stats の SQLite も使わない
 
@@ -289,4 +289,55 @@ test("フィードバックの処理は stats の SQLite を作らず、評価�
   for (const n of names) assert.ok(!/\.(db|sqlite|sqlite3)(-wal|-shm)?$/.test(n), `SQLite らしいファイル: ${n}`);
   assert.ok(names.includes("eval-set.jsonl"));
   assert.ok(names.includes("history.jsonl"));
+});
+
+/** readBodies を渡した handleFeedback で GET data を 1 回呼ぶ */
+async function dataWith(readBodies: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>): Promise<any> {
+  const srv = createServer((req, res) => {
+    void (async () => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      if (await handleFeedback(req, res, url, { dir, staticDir: STATIC_DIR, readBodies })) return;
+      res.writeHead(404);
+      res.end();
+    })();
+  });
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+  const p = (srv.address() as AddressInfo).port;
+  try {
+    const body = await new Promise<string>((resolve, reject) => {
+      const req = request({ host: "127.0.0.1", port: p, method: "GET", path: `/feedback/${sid1}/data?t=${TOKEN}` }, (r) => {
+        const chunks: Buffer[] = [];
+        r.on("data", (c: Buffer) => chunks.push(c));
+        r.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+    return JSON.parse(body);
+  } finally {
+    await new Promise<void>((r) => srv.close(() => r()));
+  }
+}
+
+test("GET data は readBodies があればカードに全文 (body) を添え、上限で切る。無いカードと読めないときは body なし", async () => {
+  let asked: readonly string[] = [];
+  const long = "あ".repeat(BODY_MAX_CHARS + 10);
+  const d = await dataWith(async (ids) => {
+    asked = ids;
+    return new Map([
+      ["m-a1", "  ダミーの全文\n2 行目  "],
+      ["m-c", long],
+    ]);
+  });
+  const cards = d.session.items[0].cards as { id: string; body?: string }[];
+  assert.equal(new Set(asked).size, asked.length, "同じ id を何度も聞かない");
+  assert.ok(asked.includes("m-a1") && asked.includes("m-c"));
+  assert.equal(cards.find((c) => c.id === "m-a1")!.body, "ダミーの全文\n2 行目");
+  assert.equal(cards.find((c) => c.id === "m-c")!.body, "あ".repeat(BODY_MAX_CHARS) + "…");
+  assert.equal(cards.find((c) => c.id === "m-b1")!.body, undefined);
+
+  const failed = await dataWith(async () => {
+    throw new Error("読めない");
+  });
+  assert.ok(failed.session.items[0].cards.every((c: { body?: string }) => c.body === undefined));
 });
