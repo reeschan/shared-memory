@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ja" data-theme="lab-note" data-mode="light">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.13; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>検索フィードバック</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=IBM+Plex+Mono:wght@400&display=swap" id="theme-fonts">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.13"></script>
+    <style type="text/tailwindcss" id="theme">
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-secondary: var(--secondary);
+  --color-primary: var(--primary);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-card-foreground: var(--card-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --radius-sm: calc(var(--theme-radius) * 0.5);
+  --radius-md: var(--theme-radius);
+  --radius-lg: calc(var(--theme-radius) * 1.5);
+  --spacing: calc(0.25rem * var(--theme-spacing-scale));
+  --shadow-md: var(--theme-shadow);
+  --font-sans: var(--theme-font-body);
+  --font-heading: var(--theme-font-heading);
+  --font-mono: var(--theme-font-mono);
+}
+
+/* 実験ノート — 紙の実験ノート。罫と余白、数字は等幅で端正に */
+[data-theme="lab-note"] {
+  color-scheme: light;
+  --background: oklch(0.985 0.012 75.0);
+  --foreground: oklch(0.200 0.015 75.0);
+  --card: oklch(1.000 0.000 75.0);
+  --muted: oklch(0.955 0.015 75.0);
+  --muted-foreground: oklch(0.480 0.015 75.0);
+  --border: oklch(0.900 0.015 75.0);
+  --input: oklch(0.900 0.015 75.0);
+  --secondary: oklch(0.940 0.015 75.0);
+  --primary: oklch(0.550 0.050 45.0);
+  --ring: oklch(0.620 0.050 45.0);
+  --accent: oklch(0.950 0.015 45.0);
+  --accent-foreground: oklch(0.350 0.038 45.0);
+  --brand-accent: oklch(0.600 0.040 20.0);
+  --destructive: oklch(0.550 0.198 25.0);
+  --success: oklch(0.500 0.138 150.0);
+  --warning: oklch(0.750 0.136 75.0);
+  --card-foreground: oklch(0.200 0.015 75.0);
+  --secondary-foreground: oklch(0.200 0.015 75.0);
+  --primary-foreground: oklch(0.985 0.012 75.0);
+  --destructive-foreground: oklch(0.985 0.012 75.0);
+  --success-foreground: oklch(0.985 0.012 75.0);
+  --warning-foreground: oklch(0.180 0.015 75.0);
+  --brand-accent-foreground: oklch(0.180 0.015 75.0);
+  --theme-radius: 0px;
+  --theme-spacing-scale: 1.15;
+  --theme-shadow: 0 0 #0000;
+  --theme-font-heading: "Playfair Display", serif;
+  --theme-font-body: "Noto Serif JP", serif;
+  --theme-font-mono: "IBM Plex Mono", monospace;
+}
+[data-theme="lab-note"][data-mode="dark"] {
+  color-scheme: dark;
+  --background: oklch(0.160 0.015 75.0);
+  --foreground: oklch(0.960 0.015 75.0);
+  --card: oklch(0.200 0.015 75.0);
+  --muted: oklch(0.250 0.015 75.0);
+  --muted-foreground: oklch(0.680 0.015 75.0);
+  --border: oklch(0.300 0.015 75.0);
+  --input: oklch(0.300 0.015 75.0);
+  --secondary: oklch(0.270 0.015 75.0);
+  --primary: oklch(0.700 0.048 45.0);
+  --ring: oklch(0.620 0.050 45.0);
+  --accent: oklch(0.280 0.015 45.0);
+  --accent-foreground: oklch(0.850 0.038 45.0);
+  --brand-accent: oklch(0.720 0.038 20.0);
+  --destructive: oklch(0.620 0.200 25.0);
+  --success: oklch(0.650 0.148 150.0);
+  --warning: oklch(0.750 0.136 75.0);
+  --card-foreground: oklch(0.960 0.015 75.0);
+  --secondary-foreground: oklch(0.960 0.015 75.0);
+  --primary-foreground: oklch(0.180 0.015 75.0);
+  --destructive-foreground: oklch(0.180 0.015 75.0);
+  --success-foreground: oklch(0.180 0.015 75.0);
+  --warning-foreground: oklch(0.180 0.015 75.0);
+  --brand-accent-foreground: oklch(0.180 0.015 75.0);
+}
+    </style>
+  </head>
+  <body class="bg-background font-sans text-foreground">
+    <header class="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+        <a href="#top" class="whitespace-nowrap font-heading text-lg tracking-tight">shared-memory <span class="text-muted-foreground">/ 検索フィードバック</span></a>
+        <nav class="hidden gap-5 whitespace-nowrap text-sm text-muted-foreground md:flex">
+          <a href="#overview" class="hover:text-foreground">結果の一覧</a>
+          <a href="#judge" class="hover:text-foreground">判定</a>
+        </nav>
+        <p class="hidden whitespace-nowrap font-mono text-xs text-muted-foreground lg:block">2026-W43 · セッション 01M5E9 · 下書きを自動で保存</p>
+        <a href="#confirm" class="ml-auto whitespace-nowrap bg-primary px-4 py-2 text-sm text-primary-foreground transition hover:opacity-90 active:translate-y-px">確定して送る</a>
+      </div>
+    </header>
+
+    <main id="top" class="mx-auto max-w-6xl px-6 pb-24">
+      <section class="grid gap-8 border-b border-border py-12 md:grid-cols-[1.4fr_1fr] md:items-end">
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">週 1 回 · 10 問 · 約 5 分</p>
+          <h1 class="mt-3 font-heading text-4xl leading-tight lg:text-5xl">今週の検索は、<br>役に立っていましたか。</h1>
+          <p class="mt-5 max-w-xl leading-relaxed text-muted-foreground">エージェントが今週実際に投げた問いと、評価セットの問いを 10 問選びました。結果の 1 件ずつに「答えている・一部関係する・関係ない」を付けてください。どの設定から出た結果かは伏せてあります。</p>
+        </div>
+        <dl class="grid grid-cols-2 border-l border-t border-border text-sm">
+          <div class="border-b border-r border-border p-4"><dt class="text-muted-foreground">ガード</dt><dd class="mt-1 flex items-center gap-2 font-heading text-xl"><span class="inline-block size-2 bg-success"></span>問題なし</dd></div>
+          <div class="border-b border-r border-border p-4"><dt class="text-muted-foreground">nDCG@10 (本番)</dt><dd class="mt-1 font-mono text-xl">0.874</dd></div>
+          <div class="border-b border-r border-border p-4"><dt class="text-muted-foreground">インターリービング</dt><dd class="mt-1 font-mono text-xl">7 – 5 <span class="text-sm text-muted-foreground">分 12</span></dd></div>
+          <div class="border-b border-r border-border p-4"><dt class="text-muted-foreground">評価セット</dt><dd class="mt-1 font-mono text-xl">74 問 <span class="text-sm text-muted-foreground">人 14</span></dd></div>
+        </dl>
+      </section>
+
+      <section id="overview" class="py-12">
+        <div class="flex items-baseline justify-between">
+          <h2 class="font-heading text-2xl">結果の一覧</h2>
+          <p class="font-mono text-xs text-muted-foreground">最終評価 2026-10-20 03:00 · sm eval</p>
+        </div>
+        <div class="mt-6 grid gap-px border border-border bg-border md:grid-cols-2">
+
+          <figure class="bg-card p-6">
+            <figcaption class="flex items-baseline justify-between">
+              <span class="font-heading text-lg">nDCG@10 の推移</span>
+              <span class="flex gap-4 text-xs text-muted-foreground"><span class="flex items-center gap-1"><span class="inline-block h-0.5 w-4 bg-primary"></span>本番</span><span class="flex items-center gap-1"><span class="inline-block h-0.5 w-4 border-t border-dashed border-muted-foreground"></span>一次スコアだけ</span></span>
+            </figcaption>
+            <svg viewBox="0 0 340 170" class="mt-4 w-full" role="img" aria-label="週ごとの nDCG@10。本番は 0.858 から 0.874、一次スコアだけは 0.866 から 0.878">
+              <g class="stroke-border" stroke-width="1"><line x1="20" y1="20" x2="330" y2="20"/><line x1="20" y1="80" x2="330" y2="80"/><line x1="20" y1="140" x2="330" y2="140"/></g>
+              <g class="fill-muted-foreground font-mono" font-size="9"><text x="0" y="23">.90</text><text x="0" y="83">.87</text><text x="0" y="143">.84</text></g>
+              <polyline points="30,84 86,80 142,88 198,76 254,70 310,64" fill="none" class="stroke-muted-foreground" stroke-width="1.5" stroke-dasharray="4 3"/>
+              <polyline points="30,96 86,88 142,104 198,78 254,82 310,72" fill="none" class="stroke-primary" stroke-width="2"/>
+              <g class="fill-primary"><circle cx="30" cy="96" r="2.5"/><circle cx="86" cy="88" r="2.5"/><circle cx="142" cy="104" r="2.5"/><circle cx="198" cy="78" r="2.5"/><circle cx="254" cy="82" r="2.5"/><circle cx="310" cy="72" r="3.5"/></g>
+              <g class="fill-muted-foreground font-mono" font-size="9" text-anchor="middle"><text x="30" y="160">W38</text><text x="86" y="160">W39</text><text x="142" y="160">W40</text><text x="198" y="160">W41</text><text x="254" y="160">W42</text><text x="310" y="160">W43</text></g>
+            </svg>
+            <p class="mt-3 text-sm text-muted-foreground">本番の設定 (rescore あり) と一次スコアだけを、同じ評価セットで毎週測ったもの。</p>
+          </figure>
+
+          <figure class="bg-card p-6">
+            <figcaption class="flex items-baseline justify-between">
+              <span class="font-heading text-lg">ガード — 差と 95% 区間</span>
+              <span class="text-xs text-muted-foreground">本番 − 一次スコアだけ</span>
+            </figcaption>
+            <svg viewBox="0 0 340 170" class="mt-4 w-full" role="img" aria-label="週ごとの差と 95% 区間。どの週も区間が 0 をまたいでおり、有意な悪化はない">
+              <rect x="20" y="8" width="140" height="138" class="fill-muted"/>
+              <line x1="160" y1="8" x2="160" y2="146" class="stroke-foreground" stroke-width="1"/>
+              <g class="fill-muted-foreground font-mono" font-size="9"><text x="20" y="160">−0.03</text><text x="150" y="160">0</text><text x="300" y="160">+0.03</text><text x="24" y="20">悪化</text></g>
+              <g class="stroke-muted-foreground" stroke-width="1.5">
+                <line x1="66.7" y1="20" x2="197.3" y2="20"/><line x1="76" y1="42" x2="206.7" y2="42"/><line x1="48" y1="64" x2="188" y2="64"/><line x1="104" y1="86" x2="206.7" y2="86"/><line x1="71.3" y1="108" x2="192.7" y2="108"/>
+              </g>
+              <line x1="80.7" y1="130" x2="202" y2="130" class="stroke-primary" stroke-width="2.5"/>
+              <g class="fill-foreground"><rect x="129" y="17" width="6" height="6"/><rect x="138.3" y="39" width="6" height="6"/><rect x="119.7" y="61" width="6" height="6"/><rect x="152.3" y="83" width="6" height="6"/><rect x="129" y="105" width="6" height="6"/></g>
+              <rect x="137.3" y="126" width="8" height="8" class="fill-primary"/>
+              <g class="fill-muted-foreground font-mono" font-size="9"><text x="300" y="23">W38</text><text x="300" y="45">W39</text><text x="300" y="67">W40</text><text x="300" y="89">W41</text><text x="300" y="111">W42</text></g>
+              <text x="300" y="133" class="fill-primary font-mono" font-size="9">W43</text>
+            </svg>
+            <p class="mt-3 text-sm text-muted-foreground">区間の右端が 0 より左に 2 週続いたら、トーストで知らせます。設定は自動では変えません。</p>
+          </figure>
+
+          <figure class="bg-card p-6">
+            <figcaption class="flex items-baseline justify-between">
+              <span class="font-heading text-lg">インターリービングの勝ち負け</span>
+              <span class="whitespace-nowrap font-mono text-xs text-muted-foreground">符号検定 p = 0.77</span>
+            </figcaption>
+            <svg viewBox="0 0 340 170" class="mt-4 w-full" role="img" aria-label="週ごとの勝ち負け。累計は本番 7 勝、一次スコアだけ 5 勝、引き分け 12">
+              <line x1="20" y1="140" x2="330" y2="140" class="stroke-border"/>
+              <g class="fill-primary"><rect x="40" y="112" width="36" height="28"/><rect x="110" y="112" width="36" height="28"/><rect x="180" y="126" width="36" height="14"/><rect x="250" y="112" width="36" height="28"/></g>
+              <g class="fill-brand-accent"><rect x="40" y="98" width="36" height="14"/><rect x="110" y="84" width="36" height="28"/><rect x="180" y="112" width="36" height="14"/><rect x="250" y="98" width="36" height="14"/></g>
+              <g class="fill-muted"><rect x="40" y="56" width="36" height="42"/><rect x="110" y="42" width="36" height="42"/><rect x="180" y="70" width="36" height="42"/><rect x="250" y="56" width="36" height="42"/></g>
+              <g class="fill-muted-foreground font-mono" font-size="9" text-anchor="middle"><text x="58" y="156">W40</text><text x="128" y="156">W41</text><text x="198" y="156">W42</text><text x="268" y="156">W43</text></g>
+            </svg>
+            <p class="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground"><span class="flex items-center gap-1"><span class="inline-block size-2.5 bg-primary"></span>本番の勝ち</span><span class="flex items-center gap-1"><span class="inline-block size-2.5 bg-brand-accent"></span>一次スコアだけの勝ち</span><span class="flex items-center gap-1"><span class="inline-block size-2.5 border border-border bg-muted"></span>引き分け (上位が同じ)</span></p>
+          </figure>
+
+          <figure class="bg-card p-6">
+            <figcaption class="flex items-baseline justify-between">
+              <span class="font-heading text-lg">正解の作成日の分布</span>
+              <span class="text-xs text-muted-foreground">週ごとの割合</span>
+            </figcaption>
+            <svg viewBox="0 0 340 170" class="mt-4 w-full" role="img" aria-label="作成週ごとの割合。検索対象は 44%、34%、22%。正解は 42%、57%、1%。最新の週の記憶が正解にほとんど入っていない">
+              <line x1="20" y1="140" x2="330" y2="140" class="stroke-border"/>
+              <g class="fill-none stroke-muted-foreground" stroke-width="1.5"><rect x="45" y="52" width="32" height="88"/><rect x="145" y="72" width="32" height="68"/><rect x="245" y="96" width="32" height="44"/></g>
+              <g class="fill-primary"><rect x="81" y="56" width="32" height="84"/><rect x="181" y="26" width="32" height="114"/><rect x="281" y="138" width="32" height="2"/></g>
+              <g class="fill-muted-foreground font-mono" font-size="9" text-anchor="middle"><text x="61" y="47">44%</text><text x="161" y="67">34%</text><text x="261" y="91">22%</text></g>
+              <g class="fill-primary font-mono" font-size="9" text-anchor="middle"><text x="97" y="51">42%</text><text x="197" y="21">57%</text><text x="297" y="133">1%</text></g>
+              <g class="fill-muted-foreground font-mono" font-size="9" text-anchor="middle"><text x="79" y="156">W41</text><text x="179" y="156">W42</text><text x="279" y="156">W43</text></g>
+            </svg>
+            <p class="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground"><span class="flex items-center gap-1"><span class="inline-block size-2.5 border border-muted-foreground"></span>検索対象</span><span class="flex items-center gap-1"><span class="inline-block size-2.5 bg-primary"></span>正解</span><span class="text-warning-foreground bg-warning px-1.5">W43 の記憶が正解にほぼ無い</span></p>
+          </figure>
+        </div>
+      </section>
+
+      <section id="judge" class="border-t border-border py-12">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 class="font-heading text-2xl">判定</h2>
+            <p class="mt-1 text-sm text-muted-foreground">1 件ずつ選ぶと、その場で下書きとして保存されます。タブを閉じても続きから再開できます。</p>
+          </div>
+          <div class="w-full max-w-xs">
+            <div class="flex justify-between font-mono text-xs text-muted-foreground"><span>3 / 10 問</span><span>30%</span></div>
+            <div class="mt-1 h-1.5 bg-muted"><div class="h-full w-[30%] bg-primary"></div></div>
+          </div>
+        </div>
+
+        <ol class="mt-6 grid grid-cols-10 gap-px border border-border bg-border font-mono text-xs" aria-label="問いの一覧">
+          <li><a href="#judge" class="block bg-secondary py-2 text-center text-muted-foreground">1 ✓</a></li>
+          <li><a href="#judge" class="block bg-secondary py-2 text-center text-muted-foreground">2 ✓</a></li>
+          <li><a href="#judge" class="block bg-secondary py-2 text-center text-muted-foreground">3 ✓</a></li>
+          <li><a href="#judge" class="block bg-primary py-2 text-center text-primary-foreground" aria-current="step">4</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">5</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">6</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">7</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">8</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">9</a></li>
+          <li><a href="#judge" class="block bg-card py-2 text-center">10</a></li>
+        </ol>
+
+        <article class="mt-8 border border-border bg-card">
+          <header class="border-b border-border p-6">
+            <p class="flex flex-wrap gap-2 font-mono text-xs text-muted-foreground"><span>問 4</span><span>·</span><span>実クエリ</span><span>·</span><span>問われた時点 2026-10-20 14:32</span><span class="bg-accent px-1.5 text-accent-foreground">上位が違う</span></p>
+            <h3 class="mt-3 font-heading text-2xl leading-snug">rescore の減衰の下限はいくつに決めた?</h3>
+          </header>
+
+          <ul class="divide-y divide-border">
+            <li class="grid gap-4 p-6 md:grid-cols-[2rem_1fr_auto]">
+              <span class="font-mono text-sm text-muted-foreground">01</span>
+              <div>
+                <p class="font-bold">rescore の decay_floor は 0.7 に決め、半減期は 1 つにする</p>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">cold と archive も検索に出し、スコアが日数に対して単調に下がるようにする。下限 0.7 は維持…</p>
+                <p class="mt-2 flex flex-wrap gap-3 font-mono text-xs text-muted-foreground"><span>作成 10/21</span><span>human_confirmed</span><span>repo:shared-memory</span></p>
+              </div>
+              <fieldset class="flex w-fit gap-px self-start border border-border bg-border text-sm">
+                <legend class="sr-only">結果 01 の判定</legend>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r1" class="sr-only" checked>答えている</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r1" class="sr-only">一部</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r1" class="sr-only">関係ない</label>
+              </fieldset>
+            </li>
+            <li class="grid gap-4 bg-muted/40 p-6 md:grid-cols-[2rem_1fr_auto]">
+              <span class="font-mono text-sm text-muted-foreground">02</span>
+              <div>
+                <p class="font-bold">再スコアは時間減衰・アクセス回数・出所の係数を掛ける</p>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">上位 50 チャンクを MCP サーバー側で再スコアする。半減期は hot 30 日 / warm 60 日…</p>
+                <p class="mt-2 flex flex-wrap items-center gap-3 font-mono text-xs text-muted-foreground"><span>作成 10/10</span><span>agent_verified</span><span class="bg-warning px-1.5 text-warning-foreground">古い記憶 · 11 日</span></p>
+                <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" class="size-4 accent-primary" checked>新しい版があり、これは古い</label>
+              </div>
+              <fieldset class="flex w-fit gap-px self-start border border-border bg-border text-sm">
+                <legend class="sr-only">結果 02 の判定</legend>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r2" class="sr-only">答えている</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r2" class="sr-only" checked>一部</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r2" class="sr-only">関係ない</label>
+              </fieldset>
+            </li>
+            <li class="grid gap-4 p-6 md:grid-cols-[2rem_1fr_auto]">
+              <span class="font-mono text-sm text-muted-foreground">03</span>
+              <div>
+                <p class="font-bold">検索設定の比較結果 (2026-10-17): rescore が順位を大きく下げる</p>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">現行 hybrid の nDCG@10 は 0.884。減衰の下限 0.7・アクセス係数 0.2 倍にすると 0.859…</p>
+                <p class="mt-2 flex flex-wrap gap-3 font-mono text-xs text-muted-foreground"><span>作成 10/17</span><span>agent_verified</span></p>
+              </div>
+              <fieldset class="flex w-fit gap-px self-start border border-border bg-border text-sm">
+                <legend class="sr-only">結果 03 の判定</legend>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r3" class="sr-only">答えている</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r3" class="sr-only" checked>一部</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r3" class="sr-only">関係ない</label>
+              </fieldset>
+            </li>
+            <li class="grid gap-4 p-6 md:grid-cols-[2rem_1fr_auto]">
+              <span class="font-mono text-sm text-muted-foreground">04</span>
+              <div>
+                <p class="font-bold">tier の降格は 7 日で warm、30 日で cold、180 日で archive</p>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">最終アクセスから 7 日で hot から warm に降格する。降格は検索対象から外すだけで…</p>
+                <p class="mt-2 flex flex-wrap gap-3 font-mono text-xs text-muted-foreground"><span>作成 10/10</span><span>agent_verified</span><span class="bg-warning px-1.5 text-warning-foreground">古い記憶 · 11 日</span></p>
+                <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" class="size-4 accent-primary">新しい版があり、これは古い</label>
+              </div>
+              <fieldset class="flex w-fit gap-px self-start border border-border bg-border text-sm">
+                <legend class="sr-only">結果 04 の判定</legend>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r4" class="sr-only">答えている</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r4" class="sr-only">一部</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r4" class="sr-only">関係ない</label>
+              </fieldset>
+            </li>
+            <li class="grid gap-4 p-6 md:grid-cols-[2rem_1fr_auto]">
+              <span class="font-mono text-sm text-muted-foreground">05</span>
+              <div>
+                <p class="font-bold">埋め込みプロバイダーとリランカーを設定で切り替える</p>
+                <p class="mt-1 text-sm leading-relaxed text-muted-foreground">provider は ollama と OpenAI 互換の 2 つ。候補は一次スコアの上位から選ぶ…</p>
+                <p class="mt-2 flex flex-wrap gap-3 font-mono text-xs text-muted-foreground"><span>作成 10/21</span><span>human_confirmed</span></p>
+              </div>
+              <fieldset class="flex w-fit gap-px self-start border border-border bg-border text-sm">
+                <legend class="sr-only">結果 05 の判定</legend>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r5" class="sr-only">答えている</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r5" class="sr-only">一部</label>
+                <label class="cursor-pointer bg-card px-3 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground"><input type="radio" name="r5" class="sr-only">関係ない</label>
+              </fieldset>
+            </li>
+          </ul>
+
+          <footer class="flex flex-wrap items-center justify-between gap-4 border-t border-border p-6 text-sm">
+            <a href="#judge" class="text-muted-foreground hover:text-foreground">← 問 3</a>
+            <p class="text-muted-foreground">結果の並びは 2 つの設定から交互に取ったもので、出どころは確定後のレポートにだけ出ます。</p>
+            <a href="#judge" class="border border-foreground px-4 py-2 transition hover:bg-foreground hover:text-background active:translate-y-px">問 5 へ →</a>
+          </footer>
+        </article>
+      </section>
+
+      <section id="confirm" class="grid gap-6 border-t-2 border-foreground py-12 md:grid-cols-[1fr_auto] md:items-center">
+        <div>
+          <h2 class="font-heading text-2xl">確定して MCP サーバーに送る</h2>
+          <p class="mt-2 max-w-2xl leading-relaxed text-muted-foreground">判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。未判定の 6 問は、判定なしとして扱います。</p>
+          <p class="mt-2 font-mono text-xs text-muted-foreground">送り先 127.0.0.1:7820 · 保存先 eval.dir (設定で選べる)</p>
+        </div>
+        <a href="#top" class="bg-primary px-8 py-4 text-center font-heading text-lg text-primary-foreground transition hover:opacity-90 active:translate-y-px">確定して送る</a>
+      </section>
+    </main>
+  </body>
+</html>
