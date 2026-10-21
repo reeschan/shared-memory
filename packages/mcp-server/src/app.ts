@@ -4,12 +4,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import {
-  Embedder,
+  createEmbedder,
+  createReranker,
   KINDS,
   OpenSearchClient,
   PROVENANCES,
   SOURCE_AGENTS,
   StatsStore,
+  checkEmbeddingCompat,
   ensureSetup,
   readMemory,
   recordAccess,
@@ -17,6 +19,7 @@ import {
   writeMemory,
   type Config,
   type Deps,
+  type Reranker,
   type WriteInput,
 } from "@shared-memory/core";
 
@@ -61,7 +64,7 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-function buildMcpServer(cfg: Config, deps: Deps): McpServer {
+function buildMcpServer(cfg: Config, deps: Deps, reranker: Reranker | undefined): McpServer {
   const server = new McpServer({ name: "shared-memory", version: "0.1.0" });
 
   server.registerTool(
@@ -78,7 +81,13 @@ function buildMcpServer(cfg: Config, deps: Deps): McpServer {
     },
     async (args) => {
       try {
-        return ok(await searchMemories(cfg, deps, args));
+        return ok(
+          await searchMemories(
+            cfg,
+            { os: deps.os, embedder: deps.embedder, reranker, log: (msg) => console.error(msg) },
+            args,
+          ),
+        );
       } catch (e) {
         return fail(`search failed: ${errMsg(e)}`);
       }
@@ -118,6 +127,17 @@ function buildMcpServer(cfg: Config, deps: Deps): McpServer {
         supersedes: z.string().optional().describe("Id of the memory this one replaces"),
         symbol_ref: z.string().optional().describe("Related code symbol, e.g. repo:path#symbol"),
         tags: z.array(z.string()).optional().describe("Tags"),
+        source_path: z
+          .string()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe("Path of the source document this memory was extracted from"),
+        source_sha256: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/)
+          .optional()
+          .describe("SHA-256 (lowercase hex) of that source document"),
       },
     },
     async (args) => {
@@ -162,7 +182,20 @@ export async function startServer(cfg: Config): Promise<{ port: number; close():
 
   const os = new OpenSearchClient(cfg.opensearch.url);
   await ensureSetup(cfg, os);
-  const deps: Deps = { os, embedder: new Embedder(cfg.embedding, cfg.cache_dir), stats: new StatsStore(cfg.state_db) };
+  const deps: Deps = { os, embedder: createEmbedder(cfg.embedding, cfg.cache_dir), stats: new StatsStore(cfg.state_db) };
+  const reranker = createReranker(cfg.rerank);
+
+  // 埋め込みの指紋の不一致は警告にとどめ、起動は止めない
+  try {
+    const compat = await checkEmbeddingCompat(cfg, os);
+    if (!compat.ok) {
+      console.error(
+        `警告: インデックス ${compat.index} の埋め込みの指紋 (${compat.indexFingerprint}) が設定 (${compat.expected}) と一致しません。pnpm sm reindex を実行してください`,
+      );
+    }
+  } catch (e) {
+    console.error(`警告: 埋め込みの指紋を確認できませんでした: ${errMsg(e)}`);
+  }
 
   let allowedHosts = new Set<string>();
 
@@ -175,7 +208,7 @@ export async function startServer(cfg: Config): Promise<{ port: number; close():
     } catch {
       return rpcError(res, 400, -32700, "Parse error");
     }
-    const server = buildMcpServer(cfg, deps);
+    const server = buildMcpServer(cfg, deps, reranker);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {
       void transport.close();

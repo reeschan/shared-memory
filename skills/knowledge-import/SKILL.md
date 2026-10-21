@@ -7,7 +7,7 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 
 複数のメモリをまとめて shared-memory に入れる。1 件ずつ MCP の `write` を呼ぶと毎回インデックスが走って遅いため、CLI の `import` コマンドで一括登録する。Skill の役割は、入力を分割・分類して候補を作り、人の確認を挟むこと。
 
-- **リポジトリルート** (以下 `<ROOT>`): 環境変数 `SHARED_MEMORY_ROOT`、無ければ `C:\Users\owner\dev\shared-memory`。
+- **リポジトリルート** (以下 `<ROOT>`): 環境変数 `SHARED_MEMORY_ROOT`。Windows 以外では指定を必須とする。Windows で指定が無ければ `C:\Users\owner\dev\shared-memory`。
 - CLI: `pnpm --dir <ROOT> sm import <file> --dry-run` (検証のみ) → 承認後 `pnpm --dir <ROOT> sm import <file>`。
   - `pnpm --dir` で実行すると CLI の作業ディレクトリが `<ROOT>` になる。**JSONL は必ず絶対パスで渡す** (相対パスは `<ROOT>` 基準で解釈される)。
   - 必要なら `--source-agent <claude|codex|kimi|grok|human>` で、行に `source_agent` が無いときの既定値を指定できる。
@@ -40,6 +40,8 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 | `supersedes` | | 置き換える既存メモリの `id` (ULID)。存在しない id はエラー |
 | `symbol_ref` | | 関連するコードのシンボル (例 `src/auth/session.ts/refreshToken`) |
 | `tags` | | 文字列の配列 |
+| `source_path` | | 出典のファイルのパス (空でない 1000 字以内) |
+| `source_sha256` | | 出典のファイルの SHA-256 (64 桁の小文字 16 進) |
 
 例 (2 行):
 
@@ -53,6 +55,12 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 ## 注意点
 
 - `provenance` の既定は `agent_verified`。人が内容を 1 件ずつ確認したものだけ `human_confirmed` にする。推測で書いたものは `agent_inferred`。
+- ファイルから取り込むときは、`source_path` と `source_sha256` を必ず付ける。`source_path` には読み込んだファイルのパスを入れる。ハッシュは OS ごとに次で求める。
+  - Windows: `(Get-FileHash -Algorithm SHA256 <path>).Hash.ToLower()`
+  - macOS: `shasum -a 256 <path>`
+  - Linux: `sha256sum <path>`
+- ファイルから取り込むときも、本文末尾の `出典: <パス>` は今までどおり残す。
+- 会話や貼り付けから取り込むときは、`source_path` と `source_sha256` を付けない。
 - 元の文書を丸ごと 1 メモリにしない。長い文書は要点ごとに分け、元ファイルのパスを本文末尾に残す (例 `出典: C:\path\to\file.md`)。
 - 秘密情報 (API キー、パスワード、トークンなど) は候補に入れない。秘密情報らしき文字列を含む行は `import` 側でも拒否される。
 - エラーが 1 件でもあると、dry-run でなくても何も書き込まれずに終了コード 1 になる。全行を直してから再実行する。

@@ -14,5 +14,18 @@ services:
       - opensearch-data:/usr/share/opensearch/data
     restart: unless-stopped
 
+  # モデルとタグは実測して決める。Apple Silicon で動かない場合は llama.cpp の
+  # llama-server --reranking を使う。
+  # 既定の `docker compose up` では起動しない。使うときは
+  # `docker compose --profile rerank up -d reranker`。
+  reranker:
+    profiles: ["rerank"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    command: --model-id BAAI/bge-reranker-v2-m3
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./.cache/tei:/data
+
 volumes:
   opensearch-data:

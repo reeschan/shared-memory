@@ -9,11 +9,25 @@ opensearch:
   pipeline_name: memories-hybrid
   pipeline_file: opensearch/search-pipeline.json
 embedding:
+  provider: ollama
   url: http://127.0.0.1:11434
   model: qwen3-embedding:0.6b
   dimension: 1024
   batch_size: 16
-  query_instruction: "Instruct: Given a question or keywords, retrieve memory notes that answer or relate to it\nQuery: "
+  normalize: true
+  query:
+    prefix: "Instruct: Given a question or keywords, retrieve memory notes that answer or relate to it\nQuery: "
+  document: { prefix: "", params: {} }
+rerank:
+  enabled: false
+  # flavor: cohere | voyage | tei | sarashina
+  flavor: cohere
+  url: ""
+  model: ""
+  candidates: 20
+  max_docs_per_request: 0
+  doc_max_chars: 2000
+  timeout_ms: 3000
 chunk:
   min_chars: 400
   max_chars: 800
@@ -24,6 +38,7 @@ search:
   searchable_tiers: [hot, warm]
   half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }
   provenance_factor: { human_confirmed: 1.0, agent_verified: 0.85, agent_inferred: 0.7 }
+  rescore: { decay_floor: 0.7, access_weight: 0.2 }
 tiers:
   warm_after_days: 7
   cold_after_days: 30

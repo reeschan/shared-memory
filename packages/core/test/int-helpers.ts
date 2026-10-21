@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadConfig, type Config } from "../src/config.ts";
 import { scopeToDir, serializeMemory, type MemoryMeta } from "../src/frontmatter.ts";
-import { Embedder } from "../src/embed.ts";
+import { createEmbedder } from "../src/embed.ts";
 import { OpenSearchClient } from "../src/opensearch.ts";
 import { StatsStore } from "../src/stats.ts";
 import type { Deps } from "../src/indexing.ts";
@@ -42,7 +42,7 @@ export async function makeTestEnv(name: string): Promise<TestEnv> {
   const os = new OpenSearchClient(cfg.opensearch.url);
   const deps: Deps = {
     os,
-    embedder: new Embedder(cfg.embedding, cfg.cache_dir),
+    embedder: createEmbedder(cfg.embedding, cfg.cache_dir),
     stats: new StatsStore(cfg.state_db),
   };
 

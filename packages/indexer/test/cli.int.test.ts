@@ -9,7 +9,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { serializeMemory, OpenSearchClient, type MemoryMeta } from "@shared-memory/core";
+import { serializeMemory, OpenSearchClient, loadConfig, type MemoryMeta } from "@shared-memory/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const cliPath = path.join(repoRoot, "packages/indexer/src/cli.ts");
@@ -59,7 +59,8 @@ const MEMORIES = [
 
 before(async () => {
   const prod = parse(await readFile(path.join(repoRoot, "config.yaml"), "utf8")) as Record<string, any>;
-  os = new OpenSearchClient(prod.opensearch.url);
+  const base = loadConfig();
+  os = new OpenSearchClient(base.opensearch.url);
   const cfg = {
     ...prod,
     memories_dir: "memories",
@@ -67,11 +68,16 @@ before(async () => {
     cache_dir: ".cache/embeddings",
     opensearch: {
       ...prod.opensearch,
+      url: base.opensearch.url,
       alias: prefix,
       index_base: `${prefix}-idx`,
       pipeline_name: `${prefix}-pipeline`,
       template_file: path.join(repoRoot, "opensearch/index-template.json"),
       pipeline_file: path.join(repoRoot, "opensearch/search-pipeline.json"),
+    },
+    embedding: {
+      ...prod.embedding,
+      url: base.embedding.url,
     },
   };
   await mkdir(path.join(root, "memories", "global"), { recursive: true });

@@ -1,11 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Config } from "./config.ts";
-import { memoryRelPath, serializeMemory, type MemoryMeta, type SourceAgent } from "./frontmatter.ts";
+import { memoryRelPath, serializeMemory, validateMeta, type MemoryMeta, type SourceAgent } from "./frontmatter.ts";
 import { indexIncremental, scanMemories, type Deps, type IndexReport } from "./indexing.ts";
 import { prepareMemory, type WriteInput } from "./memory-store.ts";
 
 export type ImportLineError = { line: number; errors: string[] };
+
+/** JSONL の行の入力。source_path / source_sha256 は meta に写す */
+export type ImportInput = WriteInput & Pick<MemoryMeta, "source_path" | "source_sha256">;
 
 export type ImportPlan = {
   ok: { line: number; meta: MemoryMeta; body: string }[];
@@ -14,12 +17,12 @@ export type ImportPlan = {
 
 const REQUIRED = ["title", "content", "scope", "kind"] as const;
 
-/** JSONL を読み、1 行 = 1 つの WriteInput にする。行番号は 1 始まり。空行は飛ばす */
+/** JSONL を読み、1 行 = 1 つの ImportInput にする。行番号は 1 始まり。空行は飛ばす */
 export function parseImportJsonl(
   text: string,
   defaults: { source_agent?: SourceAgent },
-): { inputs: { line: number; input: WriteInput }[]; errors: ImportLineError[] } {
-  const inputs: { line: number; input: WriteInput }[] = [];
+): { inputs: { line: number; input: ImportInput }[]; errors: ImportLineError[] } {
+  const inputs: { line: number; input: ImportInput }[] = [];
   const errors: ImportLineError[] = [];
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
   lines.forEach((raw, i) => {
@@ -52,7 +55,7 @@ export function parseImportJsonl(
       errors.push({ line, errors: lineErrors });
       return;
     }
-    inputs.push({ line, input: obj as unknown as WriteInput });
+    inputs.push({ line, input: obj as unknown as ImportInput });
   });
   return { inputs, errors };
 }
@@ -60,7 +63,7 @@ export function parseImportJsonl(
 /** 各行を検証してメタデータを作る (書き込みはしない) */
 export async function planImport(
   cfg: Config,
-  inputs: { line: number; input: WriteInput }[],
+  inputs: { line: number; input: ImportInput }[],
   now: Date = new Date(),
 ): Promise<ImportPlan> {
   const { memories } = await scanMemories(cfg);
@@ -77,6 +80,12 @@ export async function planImport(
       r = prepareMemory(input, { now: at, existingIds });
     }
     const errors = r.ok ? [] : [...r.errors];
+    if (r.ok) {
+      // prepareMemory は WriteInput だけを写すので、出典はここで meta に足して検証する
+      if (input.source_path !== undefined) r.meta.source_path = input.source_path;
+      if (input.source_sha256 !== undefined) r.meta.source_sha256 = input.source_sha256;
+      errors.push(...validateMeta(r.meta));
+    }
     if (r.ok && usedIds.has(r.meta.id)) errors.push(`id ${r.meta.id} を重複なく採番できません`);
 
     const key = JSON.stringify([input.title, input.content]);

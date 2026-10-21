@@ -4,6 +4,7 @@
 
 > 実装の前に書いた契約。コードはおおむねこのとおりだが、実装時に足したものがある。食い違ったらコードが正。
 > - 型の追加: `TierDeps` (`{ os, stats }`)、`ImportPlan` / `ImportLineError`
+> - `Embedder` は interface で、`createEmbedder(cfg, cacheDir, opts?)` が返す。`Reranker` は `createReranker(cfg)` が返し、無効なら `undefined`。`SearchResult.rerank_score` はリランクした候補にだけ付く
 > - MCP の `get` の返り値は `{ meta, path, body }` (front matter は `meta`)。Host ヘッダーは `[::1]:<port>` も許可する。応答は SSE ではなく JSON
 > - CLI の `import` は、エラーがあると書き込まずに終了コード 1。`--json` のときはエラーも `{"error": ...}` の JSON で出す
 > - 結合テストのインデックス名は `test-<name>-<乱数>-idx` (エイリアスと同じ名前にはできないため)
@@ -36,11 +37,30 @@ opensearch:
   pipeline_name: memories-hybrid
   pipeline_file: opensearch/search-pipeline.json
 embedding:
+  provider: ollama          # ollama / openai
   url: http://127.0.0.1:11434
   model: qwen3-embedding:0.6b
   dimension: 1024
   batch_size: 16
-  query_instruction: "Instruct: Given a question or keywords, retrieve memory notes that answer or relate to it\nQuery: "
+  normalize: true
+  revision: 0
+  # rpm: 60
+  # api_key_env: EMBEDDING_API_KEY
+  query:
+    prefix: "Instruct: Given a question or keywords, retrieve memory notes that answer or relate to it\nQuery: "
+    params: {}
+  document: { prefix: "", params: {} }
+rerank:
+  enabled: false
+  flavor: cohere            # cohere / voyage / tei / sarashina
+  url: ""
+  model: ""
+  # path: /custom/rerank
+  # api_key_env: RERANK_API_KEY
+  candidates: 20
+  max_docs_per_request: 0   # 0 なら flavor の既定 (tei 32 / sarashina 20)
+  doc_max_chars: 2000
+  timeout_ms: 3000
 chunk:
   min_chars: 400
   max_chars: 800
@@ -51,6 +71,7 @@ search:
   searchable_tiers: [hot, warm]
   half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }
   provenance_factor: { human_confirmed: 1.0, agent_verified: 0.85, agent_inferred: 0.7 }
+  rescore: { decay_floor: 0.7, access_weight: 0.2 }
 tiers:
   warm_after_days: 7
   cold_after_days: 30
@@ -64,9 +85,11 @@ repos: {}   # gc の symbol_ref 確認用。リポジトリ名 -> ローカル�
 
 `packages/core/src/config.ts`:
 
-- `export type Config` … 上の YAML と同じキー (snake_case のまま) に加え `root: string` (リポジトリルートの絶対パス)。`memories_dir` / `state_db` / `cache_dir` / `opensearch.template_file` / `opensearch.pipeline_file` は読み込み時に**絶対パスへ解決済み**の値を入れる。
+- `export type Config` … 上の YAML と同じキー (snake_case のまま) に加え `root: string` (リポジトリルートの絶対パス)。`memories_dir` / `state_db` / `cache_dir` / `opensearch.template_file` / `opensearch.pipeline_file` は読み込み時に**絶対パスへ解決済み**の値を入れる。`search.rescore` の既定は `decay_floor: 0.7` / `access_weight: 0.2`。
 - `export function findRoot(start?: string): string` … `start` (既定 `process.env.SHARED_MEMORY_ROOT ?? process.cwd()`) から親へたどり、`config.yaml` と `pnpm-workspace.yaml` が両方ある最初のディレクトリを返す。見つからなければ throw。
 - `export function loadConfig(root?: string): Config` … `root` 省略時は `findRoot()`。必須キーが欠けていたら throw。
+- `embedding` と `rerank` は読み込み時に正規化する。`embedding` の既定は `provider: ollama`・`normalize: true`・`revision: 0`・`extra_body: {}`、`query` / `document` は `{prefix: "", params: {}}`。旧キー `embedding.query_instruction` は、`embedding.query.prefix` が無いときだけ `query.prefix` として読む。`rerank` の既定は `enabled: false`・`flavor: cohere`・`url: ""`・`model: ""`・`candidates: 20`・`max_docs_per_request: 0`・`doc_max_chars: 2000`・`timeout_ms: 3000`。`rerank.enabled` のときは `url` と `model` が必須。列挙値・数値・型が不正なら日本語のエラーで throw する。
+- `loadConfig` は最初に `<root>/.env` を読み、まだ設定されていない環境変数だけを `process.env` に入れる。`api_key_env` が書かれていて `resolveApiKey(name)` が undefined なら throw (値をエラーに出さない)。`rerank.api_key_env` は `rerank.enabled` のときだけ確かめる。API キーの値は `resolveApiKey(name?)` で取り出す。
 
 ## 2. front matter と `frontmatter.ts`
 
@@ -95,12 +118,26 @@ repos: {}   # gc の symbol_ref 確認用。リポジトリ名 -> ローカル�
 - `export function sha256(s: string): string` … 16 進。
 - `export function contentHash(chunkText: string, meta: MemoryMeta, path: string): string` … `sha256(chunkText + "\n" + JSON.stringify({title, scope, kind, provenance, source_agent, created_at, supersedes ?? null, symbol_ref ?? null, tags: [...(tags ?? [])].sort(), path}))`。メタデータが変わっても再投入されるようにするため。
 
-## 5. `embed.ts`
+## 5. `embed.ts` と `rerank.ts`
 
-- `export class Embedder` … `constructor(cfg: Config["embedding"], cacheDir: string)`
-  - `embedDocuments(items: { hash: string; text: string }[]): Promise<{ vectors: number[][]; cached: number; embedded: number }>` … 入力順にベクトルを返す。キャッシュ `<cacheDir>/<model の英数字以外を _ に置換>/<hash の先頭2文字>/<hash>.json` (中身は数値配列の JSON) にあれば使い、無いものだけ `batch_size` ずつ Ollama に送り、結果を保存する。文書側はインストラクションを付けない。
-  - `embedQuery(query: string): Promise<number[]>` … `cfg.query_instruction + query` を埋め込む。キャッシュしない。
-  - Ollama 呼び出し: `POST <url>/api/embed` body `{"model": <model>, "input": string[]}` → `{"embeddings": number[][]}`。次元が `cfg.dimension` と違えば throw。HTTP エラーは本文を含めて throw。
+### `embed.ts`
+
+- `export interface Embedder` … `readonly fingerprint: string` (埋め込みの指紋)・`readonly dimension: number`・`embedDocuments(items: { hash; text }[]): Promise<{ vectors; cached; embedded }>`・`embedQuery(query): Promise<number[]>`。
+- `export function createEmbedder(cfg: Config["embedding"], cacheDir: string, opts?: { fetch?; sleep? }): Embedder` … `provider` に応じた実装を返す。`ollama` は `POST <url>/api/embed` に `{model, input: string[], ...extra_body, ...params}` を送り、`embeddings` を読む。`openai` は `POST <url>/embeddings` に同じ形で送り、`data[].embedding` を `index` の順に並べて読む。`api_key_env` があれば `Authorization: Bearer <値>` を付ける (値はログやエラーに出さない)。
+- `embedDocuments` … キャッシュ `<cacheDir>/<指紋>/<hash の先頭2文字>/<hash>.json` (中身は数値配列の JSON) にあれば使い、無いものだけを `batch_size` ずつ送る。文書側は `document.prefix + text` と `document.params` を使う。`rpm` があれば前回の送信から `60000 / rpm` ms 空ける。429・5xx は待って最大 3 回再試行する。
+- `embedQuery` … `query.prefix + query` と `query.params` で埋め込む。キャッシュせず、再試行もしない。
+- 応答の件数が入力と違うとき、または次元が `cfg.dimension` と違うときは throw する。`normalize: true` (既定) なら L2 正規化してから返す。
+- `export function embeddingFingerprint(cfg): string` … `sha256(安定 JSON(fingerprintParts(cfg)))` の先頭 16 桁。`export function fingerprintParts(cfg): Record<string, unknown>` … `provider`・`model`・`dimension`・`normalize`・`revision`・`query`・`document`・`extra_body`。`url`・`api_key_env`・`batch_size`・`rpm` は含めない (ADR 0001)。
+- `export const LEGACY_EMBEDDING: Config["embedding"]` … 今の Qwen3 の既定。`_meta` に指紋が無い既存インデックスはこの指紋とみなし、指紋がこれと同じときだけ旧キャッシュ (`<cacheDir>/<モデル名の英数字以外を _ に置換>/…`) も読む。
+
+### `rerank.ts`
+
+- `export type RerankHit = { index: number; score: number }`
+- `export interface Reranker` … `rerank(query: string, documents: string[]): Promise<RerankHit[]>`。score の降順で全文書分を返す。失敗時は throw し、フォールバックは呼び出し側 (`searchMemories`) が行う。
+- `export function createReranker(cfg: Config["rerank"], opts?: { fetch? }): Reranker | undefined` … `enabled: false` なら `undefined`。
+- flavor ごとの送り先と読み取り: `cohere` は `<url>/v1/rerank` に `{model, query, documents, top_n, ...extra_body}` を送り `results[].relevance_score` を読む。`voyage` は `<url>/v1/rerank` に `{model, query, documents, top_k, ...extra_body}` を送り `data[].relevance_score` を読む。`tei` は `<url>/rerank` に `{query, texts, ...extra_body}` を送り `[{index, score}]` を読む。`sarashina` は `<url>/rerank` に `{model, query, documents, ...extra_body}` を送り `data[0].result[]` の `document_id` と `relevance_score` (無ければ `score`) を読む。`path` でパスを上書きできる。
+- 1 リクエストの上限は `max_docs_per_request` (0 なら flavor の既定: cohere / voyage 1000、tei 32、sarashina 20)。超える件数は分けて送り、返った index にオフセットを足して統合する。本文は `doc_max_chars` で切る。
+- 1 リクエストは `timeout_ms` で打ち切る (`AbortSignal.timeout`)。HTTP エラー・タイムアウト・応答の形が不正は throw。返ってこなかった文書は最下位として全文書分を揃える。
 
 ## 6. `opensearch.ts`
 
@@ -146,11 +183,15 @@ repos: {}   # gc の symbol_ref 確認用。リポジトリ名 -> ローカル�
 ## 9. `search.ts`
 
 - `export type SearchInput = { query: string; scope?: string; kind?: Kind; tags?: string[]; limit?: number }`
-- `export type SearchResult = { id: string; title: string; excerpt: string; score: number; scope: string; kind: Kind; provenance: Provenance; created_at: string }`
+- `export type SearchResult = { id: string; title: string; excerpt: string; score: number; scope: string; kind: Kind; provenance: Provenance; created_at: string; rerank_score?: number }` … `score` は rescore 後のスコア (意味は今までと同じ)。`rerank_score` はリランクした候補にだけ付くリランカーの点数。
 - `export function buildFilter(cfg, input): object[]` … `term is_superseded:false`、`terms tier: searchable_tiers`、指定時のみ `term scope` / `term kind` / `terms tags`。
 - `export function buildHybridQuery(cfg, input, vector: number[]): object` … `size = search.candidates`、`_source.excludes = ["embedding"]`、`query.hybrid.queries = [ {bool: {must: {multi_match: {query, fields: ["title^2","content"]}}, filter}}, {knn: {embedding: {vector, k: candidates, filter: {bool: {filter}}}}} ]`。順序は BM25 → kNN (パイプラインの weights の順と対応)。
-- `export function rescore(hybridScore: number, src: {last_accessed_at?: string|null; created_at: string; access_count?: number; tier?: Tier; provenance: Provenance}, cfg, now: Date): number` … 設計書 5.2 の式。時間減衰 = `0.5 ** (経過日数 / half_life_days[tier])`、経過日数は `last_accessed_at ?? created_at` から (負なら 0)。
-- `export async function searchMemories(cfg, deps: { os; embedder }, input, now = new Date()): Promise<SearchResult[]>` … クエリ埋め込み → `os.search(alias, buildHybridQuery(...), { search_pipeline: pipeline_name })` → 各ヒットを `rescore` → `memory_id` ごとに最大スコアのチャンクを代表にまとめる → 降順で `limit ?? default_limit` 件。`excerpt` は代表チャンクの content から先頭の `"<title>\n\n"` を除き、改行を空白にした先頭 160 字。
+- `export function rescore(hybridScore: number, src: {last_accessed_at?: string|null; created_at: string; access_count?: number; tier?: Tier; provenance: Provenance}, cfg, now: Date): number` … `(decay_floor + (1 - decay_floor) × 減衰) × (1 + access_weight × ln(1 + アクセス回数)) × 出所の係数`。減衰 = `0.5 ** (経過日数 / half_life_days[tier])`、経過日数は `last_accessed_at ?? created_at` から (負なら 0)。`decay_floor` と `access_weight` は `search.rescore` (既定 0.7 / 0.2)。
+- `export async function searchMemories(cfg, deps: { os; embedder: Embedder; reranker?: Reranker; log?: (msg: string) => void }, input, now = new Date()): Promise<SearchResult[]>` … クエリ埋め込み → `os.search(alias, buildHybridQuery(...), { search_pipeline: pipeline_name })` → 各ヒットを `rescore` → `memory_id` ごとに一次スコア最大のチャンクを代表にまとめる。
+  - `reranker` が無ければ、rescore の降順で `limit ?? default_limit` 件を返す。
+  - `reranker` があれば、候補は一次スコア上位 `rerank.candidates` 件。代表チャンクの本文を渡し、返った点数の降順に候補を並べる。点が返ってこなかった候補と候補外のメモリは一次スコアの降順で後ろにつなぎ、最後に `limit` で切る。リランクした候補には `rerank_score` を付け、`score` は rescore 後の値のまま (ADR 0002: リランクの順位に rescore は掛け直さない)。
+  - リランクが throw したときは `log` に 1 回メッセージを渡し、リランクなしの rescore 順で返す。検索は止めない。
+  - `excerpt` は代表チャンクの content から先頭の `"<title>\n\n"` を除き、改行を空白にした先頭 160 字。
 
 ## 10. `memory-store.ts`
 

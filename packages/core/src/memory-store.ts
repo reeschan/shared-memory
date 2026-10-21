@@ -29,6 +29,8 @@ export type WriteInput = {
   supersedes?: string;
   symbol_ref?: string;
   tags?: string[];
+  source_path?: string;
+  source_sha256?: string;
 };
 
 function toSlash(p: string): string {
@@ -76,6 +78,8 @@ export function prepareMemory(
   if (input.supersedes !== undefined) meta.supersedes = input.supersedes;
   if (input.symbol_ref !== undefined) meta.symbol_ref = input.symbol_ref;
   if (input.tags !== undefined) meta.tags = input.tags;
+  if (input.source_path !== undefined) meta.source_path = input.source_path;
+  if (input.source_sha256 !== undefined) meta.source_sha256 = input.source_sha256;
 
   const errors = validateMeta(meta);
   const content = typeof input.content === "string" ? input.content : "";

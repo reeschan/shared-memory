@@ -64,6 +64,24 @@ export class OpenSearchClient {
     return Object.keys(r.data ?? {});
   }
 
+  /** `GET /<index>/_mapping` の <実際のインデックス名>.mappings._meta。無ければ undefined */
+  async getIndexMeta(index: string): Promise<Record<string, unknown> | undefined> {
+    type MappingBody = { mappings?: { _meta?: unknown } };
+    const r = await this.#call<Record<string, MappingBody>>(
+      "GET",
+      `/${encodeURIComponent(index)}/_mapping`,
+      undefined,
+      undefined,
+      [404],
+    );
+    if (r.status === 404) return undefined;
+    for (const body of Object.values(r.data ?? {})) {
+      const meta = body?.mappings?._meta;
+      if (typeof meta === "object" && meta !== null) return meta as Record<string, unknown>;
+    }
+    return undefined;
+  }
+
   async swapAlias(alias: string, newIndex: string, oldIndices: string[]): Promise<void> {
     const actions: object[] = [
       ...oldIndices.map((index) => ({ remove: { index, alias } })),

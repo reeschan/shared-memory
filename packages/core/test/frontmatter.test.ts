@@ -131,6 +131,61 @@ test("serializeMemory は undefined のキーを出さずキー順を守る", ()
   assert.ok(text.endsWith("---\n\nx\n"));
 });
 
+test("source_path と source_sha256 を書き出して読み直すと同じ値になる", () => {
+  const sha = "0123456789abcdef".repeat(4);
+  const meta: MemoryMeta = {
+    ...baseMeta(),
+    tags: ["a"],
+    source_path: "docs/design.md",
+    source_sha256: sha,
+  };
+  assert.deepEqual(validateMeta(meta), []);
+  const text = serializeMemory(meta, "本文");
+  assert.ok(text.indexOf("tags:") < text.indexOf("source_path:"));
+  assert.ok(text.indexOf("source_path:") < text.indexOf("source_sha256:"));
+  const r = parseMemoryFile(text, memoryRelPath(meta));
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.memory.source_path, "docs/design.md");
+    assert.equal(r.memory.source_sha256, sha);
+  }
+});
+
+test("source_path と source_sha256 が無いメモリは今までどおり有効", () => {
+  assert.deepEqual(validateMeta(baseMeta()), []);
+  const text = serializeMemory(baseMeta(), "x");
+  assert.ok(!text.includes("source_path"));
+  assert.ok(!text.includes("source_sha256"));
+  const r = parseMemoryFile(SAMPLE, PATH);
+  assert.equal(r.ok, true);
+});
+
+test("source_path が空文字・文字列以外・1000 字超ならエラー", () => {
+  for (const source_path of ["", 123, null, "a".repeat(1001)]) {
+    const errs = validateMeta({ ...baseMeta(), source_path });
+    assert.ok(errs.some((e) => e.includes("source_path")), `${String(source_path)}: ${errs.join("; ")}`);
+  }
+  const r = parseMemoryFile(SAMPLE.replace("tags:\n  - security\n", 'source_path: ""\n'), PATH);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.ok(r.errors.some((e) => e.includes("source_path")));
+});
+
+test("source_sha256 が 64 桁の小文字 16 進でなければエラー", () => {
+  for (const source_sha256 of [
+    "a".repeat(63),
+    "a".repeat(65),
+    "A".repeat(64),
+    "g".repeat(64),
+    123,
+  ]) {
+    const errs = validateMeta({ ...baseMeta(), source_sha256 });
+    assert.ok(errs.some((e) => e.includes("source_sha256")), `${String(source_sha256)}: ${errs.join("; ")}`);
+  }
+  const r = parseMemoryFile(SAMPLE.replace("tags:\n  - security\n", `source_sha256: ${"A".repeat(64)}\n`), PATH);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.ok(r.errors.some((e) => e.includes("source_sha256")));
+});
+
 test("scopeToDir の 3 形式", () => {
   assert.equal(scopeToDir("global"), "global");
   assert.equal(scopeToDir("project:foo"), "project/foo");
