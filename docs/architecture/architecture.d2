@@ -1,60 +1,91 @@
 # shared-memory のアーキテクチャ図
 # __MONO__ は単色ロゴの色。render.py がライト用 (000000) とダーク用 (ffffff) に置き換えて 2 枚描く
 # 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2
-# 上から: エージェント → アプリ → ローカルのデータ / モデル → 設定で選ぶ外部 API
-# 実線 = 既定で使う流れ、破線 = 任意 (設定で有効にしたときだけ) か非同期
+# README の幅 (約 880px) で読めるように、全体を 1 列、枠の中を 2 列の格子にして幅を 1350px ほどに抑え、文字を大きくしている
+# 格子は列の数だけを決めると縦方向に詰める (1 列目を上から埋める)。並べる順を変えるときは注意
+# 上から: エージェントと利用者 → アプリ → ローカルのデータ / モデル → 設定で選ぶ外部 API
+# 実線 = 既定で使う流れ、破線 = 任意 (設定で有効にしたときだけ) か非同期・定期
 direction: down
+grid-columns: 1
+grid-gap: 90
 
 vars: {
   d2-config: {
     layout-engine: elk
-    pad: 40
+    pad: 30
   }
 }
 
 classes: {
   svc: {
     shape: rectangle
+    width: 340
+    height: 190
+    label.near: top-center
+    icon.near: bottom-center
     style: {
       border-radius: 12
-      font-size: 15
+      font-size: 22
     }
   }
   ext: {
     shape: image
-    width: 64
-    height: 64
+    width: 72
+    height: 72
     label.near: outside-bottom-center
+    style.font-size: 22
   }
   zone: {
-    style.border-radius: 16
+    style: {
+      border-radius: 16
+      font-size: 24
+    }
   }
   saas: {
     style: {
       border-radius: 16
       stroke-dash: 3
+      font-size: 24
     }
   }
   opt: {
-    style.stroke-dash: 4
+    style: {
+      stroke-dash: 4
+      font-size: 20
+    }
+  }
+  flow: {
+    style.font-size: 20
   }
 }
 
-agents: エージェント {
+people: "使う人" {
   class: saas
-  direction: right
+  grid-columns: 2
+  grid-gap: 80
 
-  claude: Claude Code {
-    class: ext
-    icon: https://cdn.simpleicons.org/anthropic/__MONO__
+  agents: "エージェント" {
+    class: zone
+    grid-columns: 3
+    grid-gap: 50
+
+    claude: Claude Code {
+      class: ext
+      icon: https://cdn.simpleicons.org/anthropic/__MONO__
+    }
+    codex: Codex {
+      shape: hexagon
+      width: 100
+      style.font-size: 22
+    }
+    kimi: Kimi Code {
+      class: ext
+      icon: https://cdn.simpleicons.org/moonshotai/__MONO__
+    }
   }
-  codex: Codex {
-    shape: hexagon
-    width: 90
-  }
-  kimi: Kimi Code {
+  human: "利用者\n(ブラウザー)" {
     class: ext
-    icon: https://cdn.simpleicons.org/moonshotai/__MONO__
+    icon: https://icons.terrastruct.com/essentials%2F359-users.svg
   }
 }
 
@@ -65,37 +96,46 @@ pc: "ローカル PC (127.0.0.1 のみ)" {
 
   app: "アプリ (packages/core を共有)" {
     class: zone
-    direction: right
+    grid-columns: 2
+    grid-gap: 30
     icon: https://cdn.simpleicons.org/typescript
 
-    sched: "定期実行\nタスクスケジューラ / launchd / systemd" {
-      class: svc
-      icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
-    }
-    cli: "CLI (pnpm sm)\nindex / reindex / import / decay / gc" {
-      class: svc
-      icon: https://cdn.simpleicons.org/nodedotjs
-    }
-    mcp: "MCP サーバー\nsearch / get / write" {
+    mcp: "MCP サーバー\nsearch / get / write\n/feedback の画面" {
       class: svc
       icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
     }
-    sched -> cli: "decay 毎日\ngc 毎週" {class: opt}
+    cli: "CLI (pnpm sm)\nindex / decay / gc\neval / feedback" {
+      class: svc
+      icon: https://cdn.simpleicons.org/nodedotjs
+    }
+    toast: "トースト (Windows)\nガードの判定と\nフィードバックの URL" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F213-alarm.svg
+    }
+    sched: "定期実行\ndecay 毎日 / gc・eval 毎週" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
+    }
   }
 
   data: "データ" {
     class: zone
-    direction: right
+    grid-columns: 2
+    grid-gap: 30
 
+    evaldir: "評価のディレクトリ\n評価セット・履歴\nセッション・レポート" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F245-folder.svg
+    }
     md: "Markdown\n唯一の正 (memories_dir)" {
       class: svc
       icon: https://cdn.simpleicons.org/markdown/__MONO__
     }
-    os: "OpenSearch + Sudachi (Docker)\nBM25 + kNN の派生インデックス\n_meta に埋め込みの指紋" {
+    os: "OpenSearch + Sudachi\nBM25 + kNN の\n派生インデックス" {
       class: svc
       icon: https://cdn.simpleicons.org/opensearch
     }
-    sqlite: "SQLite\nアクセス統計・tier" {
+    sqlite: "SQLite\nアクセス統計・tier\n検索ログ (90 日)" {
       class: svc
       icon: https://cdn.simpleicons.org/sqlite
     }
@@ -103,9 +143,10 @@ pc: "ローカル PC (127.0.0.1 のみ)" {
 
   models: "ローカルのモデル" {
     class: zone
-    direction: right
+    grid-columns: 1
+    grid-gap: 30
 
-    ollama: "Ollama (埋め込みの既定)\nQwen3-Embedding-0.6B" {
+    ollama: "Ollama (埋め込み)\nQwen3-Embedding-0.6B" {
       class: svc
       icon: https://cdn.simpleicons.org/ollama/__MONO__
     }
@@ -115,29 +156,39 @@ pc: "ローカル PC (127.0.0.1 のみ)" {
     }
   }
 
-  app -> data: "読む・書く・投入・ハイブリッド検索"
-  app -> models: "埋め込み・リランク"
+  app -> data: "読む・書く・ハイブリッド検索" {class: flow}
+  app -> models: "埋め込み・リランク" {class: flow}
 }
 
-apis: "外部 API (設定で明示したときだけ本文を送る)" {
-  class: saas
-  direction: right
+outside: "" {
+  style.stroke-width: 0
+  style.fill: transparent
+  grid-columns: 2
+  grid-gap: 60
 
-  embed: "OpenAI 互換の埋め込み\nprovider: openai (LM Studio・Sarashina など)" {
-    class: svc
-    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+  github: "GitHub\nバックアップ" {
+    class: ext
+    icon: https://cdn.simpleicons.org/github/__MONO__
   }
-  rerank: "リランク API (任意)\nflavor: cohere / voyage / sarashina" {
-    class: svc
-    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+
+  apis: "外部 API (設定で明示したときだけ本文を送る)" {
+    class: saas
+    grid-columns: 2
+      grid-gap: 30
+
+    embed: "OpenAI 互換の埋め込み\nLM Studio・Sarashina など" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+    }
+    rerank: "リランク API (任意)\ncohere / voyage / sarashina" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+    }
   }
 }
 
-github: "GitHub\nバックアップ" {
-  class: ext
-  icon: https://cdn.simpleicons.org/github/__MONO__
-}
-
-agents -> pc.app.mcp: MCP (Streamable HTTP)
-pc.app -> apis: "埋め込み・リランク" {class: opt}
-pc.data.md -> github: "開発者が差分を見て\nコミット・push" {class: opt}
+people.agents -> pc.app.mcp: "MCP (Streamable HTTP)" {class: flow}
+people.human <-> pc.app.mcp: "週 1 回の判定" {class: opt}
+pc.app.toast -> people.human: "知らせる" {class: opt}
+pc.models -> outside.apis: "外部の API に替えられる" {class: opt}
+pc.data.md -> outside.github: "開発者がコミット・push" {class: opt}
