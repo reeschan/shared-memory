@@ -25,6 +25,7 @@ import {
   type MemoryInfo,
   type OpenSearchClient,
   type Searcher,
+  type SessionSearcher,
 } from "@shared-memory/core";
 
 export type EvalIO = { out: (text: string) => void; err: (text: string) => void };
@@ -120,17 +121,27 @@ export async function importLabCommand(
   return { code: 0, ...result };
 }
 
-/** 本番の検索 (cfg) を Searcher にする。一次スコアだけは primaryOnlyConfig(cfg) を渡す。リランクの有無は cfg.rerank に従う */
-export function makeSearcher(cfgX: Config, deps: { os: OpenSearchClient; embedder: Embedder }): Searcher {
+/**
+ * 問われた時点 (asOf) で検索し、SearchResult をそのまま返す関数を作る (sm eval と sm feedback で共有)。
+ * 一次スコアだけは primaryOnlyConfig(cfg) を渡す。リランクの有無は cfgX.rerank に従う。アクセスもログも書かない
+ */
+export function makeSessionSearcher(cfgX: Config, deps: { os: OpenSearchClient; embedder: Embedder }): SessionSearcher {
   const reranker = createReranker(cfgX.rerank);
-  return async (q, asOf) => {
-    const results = await searchMemories(
+  return (input, asOf) =>
+    searchMemories(
       cfgX,
       { os: deps.os, embedder: deps.embedder, reranker, log: (msg) => console.error(msg) },
-      { query: q.query, ...q.filters, limit: 10 },
+      input,
       undefined,
       { asOf },
     );
+}
+
+/** 本番の検索 (cfg) を Searcher にする。一次スコアだけは primaryOnlyConfig(cfg) を渡す。リランクの有無は cfg.rerank に従う */
+export function makeSearcher(cfgX: Config, deps: { os: OpenSearchClient; embedder: Embedder }): Searcher {
+  const search = makeSessionSearcher(cfgX, deps);
+  return async (q, asOf) => {
+    const results = await search({ query: q.query, ...q.filters, limit: 10 }, asOf);
     return results.map((r) => r.id);
   };
 }

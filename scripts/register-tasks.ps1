@@ -2,10 +2,11 @@
 #   SharedMemory-MCP   … ログオン時に scripts\start-mcp.ps1
 #   SharedMemory-Decay … 毎日 09:00 に node packages\indexer\src\cli.ts decay
 #   SharedMemory-GC    … 毎週日曜 09:30 に node packages\indexer\src\cli.ts gc
+#   SharedMemory-Eval  … 毎週日曜 10:00 に cli.ts eval --notify のあと cli.ts feedback --notify (トーストで知らせる)
 # ログは .cache\logs\<タスク名>.log に追記する。既存のタスクは上書き登録する (何度実行しても同じ結果)。
 # 使い方:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\register-tasks.ps1            # 登録
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\register-tasks.ps1 -Unregister # 3 つを削除
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\register-tasks.ps1 -Unregister # 4 つを削除
 #   ... -WhatIf を付けると内容を表示するだけで何も変えない
 param(
     [switch]$Unregister,
@@ -47,7 +48,7 @@ function New-LoggedArgument([string]$commandText, [string]$logFile) {
     return '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "' + $inner + '"'
 }
 
-$TaskNames = @('SharedMemory-MCP', 'SharedMemory-Decay', 'SharedMemory-GC')
+$TaskNames = @('SharedMemory-MCP', 'SharedMemory-Decay', 'SharedMemory-GC', 'SharedMemory-Eval')
 
 # ---- 削除 ----
 if ($Unregister) {
@@ -106,6 +107,16 @@ $Tasks = @(
         TriggerText = '毎週日曜 09:30'
         Trigger     = { New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At '09:30' }
         Command     = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & $nodeLit $cliLit gc"
+        TimeLimit   = (New-TimeSpan -Hours 1)
+    },
+    @{
+        Name        = 'SharedMemory-Eval'
+        Description = 'shared-memory: 毎週 gc のあとに評価し (eval --notify)、判定の画面を知らせる (feedback --notify)'
+        TriggerText = '毎週日曜 10:00'
+        Trigger     = { New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At '10:00' }
+        # 2 つのコマンドの出力をどちらもログに送るため、スクリプトブロックにまとめる。
+        # feedback --notify は通知できたときは URL (合言葉入り) を出さない
+        Command     = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { & $nodeLit $cliLit eval --notify; & $nodeLit $cliLit feedback --notify }"
         TimeLimit   = (New-TimeSpan -Hours 1)
     }
 )
