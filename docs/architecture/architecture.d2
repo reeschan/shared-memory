@@ -1,7 +1,9 @@
 # shared-memory のアーキテクチャ図
 # __MONO__ は単色ロゴの色。render.py がライト用 (000000) とダーク用 (ffffff) に置き換えて 2 枚描く
 # 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2
-direction: right
+# 上から: エージェント → アプリ → ローカルのデータ / モデル → 設定で選ぶ外部 API
+# 実線 = 既定で使う流れ、破線 = 任意 (設定で有効にしたときだけ) か非同期
+direction: down
 
 vars: {
   d2-config: {
@@ -33,16 +35,14 @@ classes: {
       stroke-dash: 3
     }
   }
-}
-
-dev: 開発者 {
-  class: ext
-  icon: https://icons.terrastruct.com/essentials%2F005-programmer.svg
+  opt: {
+    style.stroke-dash: 4
+  }
 }
 
 agents: エージェント {
   class: saas
-  direction: down
+  direction: right
 
   claude: Claude Code {
     class: ext
@@ -60,46 +60,76 @@ agents: エージェント {
 
 pc: "ローカル PC (127.0.0.1 のみ)" {
   class: zone
+  direction: down
   icon: https://icons.terrastruct.com/tech%2Flaptop.svg
 
   app: "アプリ (packages/core を共有)" {
     class: zone
-    direction: down
+    direction: right
     icon: https://cdn.simpleicons.org/typescript
 
-    mcp: "MCP サーバー\nsearch / get / write" {
+    sched: "定期実行\nタスクスケジューラ / launchd / systemd" {
       class: svc
-      icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+      icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
     }
     cli: "CLI (pnpm sm)\nindex / reindex / import / decay / gc" {
       class: svc
       icon: https://cdn.simpleicons.org/nodedotjs
     }
+    mcp: "MCP サーバー\nsearch / get / write" {
+      class: svc
+      icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+    }
+    sched -> cli: "decay 毎日\ngc 毎週" {class: opt}
   }
-  sched: "タスクスケジューラ\ndecay 毎日 / gc 毎週" {
-    class: svc
-    icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
-  }
-  md: "Markdown\n唯一の正 (memories/)" {
-    class: svc
-    icon: https://cdn.simpleicons.org/markdown/__MONO__
-  }
-  sqlite: "SQLite\nアクセス統計・tier" {
-    class: svc
-    icon: https://cdn.simpleicons.org/sqlite
-  }
-  ollama: "Ollama\nQwen3-Embedding-0.6B" {
-    class: svc
-    icon: https://cdn.simpleicons.org/ollama/__MONO__
-  }
-  docker: Docker {
-    class: zone
-    icon: https://cdn.simpleicons.org/docker
 
-    os: "OpenSearch + Sudachi\nBM25 + kNN (派生)" {
+  data: "データ" {
+    class: zone
+    direction: right
+
+    md: "Markdown\n唯一の正 (memories_dir)" {
+      class: svc
+      icon: https://cdn.simpleicons.org/markdown/__MONO__
+    }
+    os: "OpenSearch + Sudachi (Docker)\nBM25 + kNN の派生インデックス\n_meta に埋め込みの指紋" {
       class: svc
       icon: https://cdn.simpleicons.org/opensearch
     }
+    sqlite: "SQLite\nアクセス統計・tier" {
+      class: svc
+      icon: https://cdn.simpleicons.org/sqlite
+    }
+  }
+
+  models: "ローカルのモデル" {
+    class: zone
+    direction: right
+
+    ollama: "Ollama (埋め込みの既定)\nQwen3-Embedding-0.6B" {
+      class: svc
+      icon: https://cdn.simpleicons.org/ollama/__MONO__
+    }
+    tei: "TEI リランカー (任意)\nDocker の --profile rerank" {
+      class: svc
+      icon: https://cdn.simpleicons.org/huggingface
+    }
+  }
+
+  app -> data: "読む・書く・投入・ハイブリッド検索"
+  app -> models: "埋め込み・リランク"
+}
+
+apis: "外部 API (設定で明示したときだけ本文を送る)" {
+  class: saas
+  direction: right
+
+  embed: "OpenAI 互換の埋め込み\nprovider: openai (LM Studio・Sarashina など)" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+  }
+  rerank: "リランク API (任意)\nflavor: cohere / voyage / sarashina" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
   }
 }
 
@@ -109,10 +139,5 @@ github: "GitHub\nバックアップ" {
 }
 
 agents -> pc.app.mcp: MCP (Streamable HTTP)
-pc.sched -> pc.app.cli: 定期実行 {style.stroke-dash: 4}
-pc.app -> pc.md: 読む・新規作成
-pc.app -> pc.ollama: 埋め込み
-pc.app -> pc.docker.os: 投入・ハイブリッド検索
-pc.app -> pc.sqlite: アクセス統計・tier
-dev -> pc.md: 差分を見てコミット
-pc.md -> github: push {style.stroke-dash: 4}
+pc.app -> apis: "埋め込み・リランク" {class: opt}
+pc.data.md -> github: "開発者が差分を見て\nコミット・push" {class: opt}

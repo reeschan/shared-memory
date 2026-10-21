@@ -4,7 +4,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg">
-  <img src="docs/architecture/architecture-light.svg" alt="shared-memory のアーキテクチャ図。Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送り、MCP サーバーと CLI が共有する core が Markdown (正)・SQLite (アクセス統計)・Ollama (埋め込み)・Docker 上の OpenSearch + Sudachi (派生インデックス) を使う。タスクスケジューラが CLI の decay / gc を定期実行し、開発者は Markdown の差分を見てコミットして GitHub に push する。">
+  <img src="docs/architecture/architecture-light.svg" alt="shared-memory のアーキテクチャ図。上から順に、Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送る。MCP サーバーと CLI は packages/core を共有し、定期実行 (タスクスケジューラ / launchd / systemd) が CLI の decay / gc を起動する。アプリはデータ (Markdown が唯一の正、OpenSearch + Sudachi が派生インデックスで _meta に埋め込みの指紋を持つ、SQLite がアクセス統計) を読み書きし、ローカルのモデル (埋め込みの既定の Ollama、任意の TEI リランカー) を呼ぶ。設定で明示したときだけ、外部の OpenAI 互換の埋め込み API やリランク API に本文を送る。Markdown は開発者が差分を見てコミットし、GitHub に push する。">
 </picture>
 
 設計の詳細は次を参照。
@@ -18,7 +18,7 @@
 - `state/stats.sqlite` … アクセス統計 (アクセス回数、最終アクセス日、tier)。PC ごとにローカルに置き、Git 管理しない
 - `config.local.yaml` … PC ごとの設定 (Git 管理外)。例は `config.local.example.yaml`
 - `opensearch/` … OpenSearch + Sudachi の Dockerfile、インデックステンプレート、Search Pipeline
-- `packages/core` … front matter 検証、チャンク分割、埋め込みクライアント、検索などの共通処理
+- `packages/core` … front matter 検証、チャンク分割、埋め込みとリランクのクライアント、検索などの共通処理
 - `packages/indexer` … CLI (`pnpm sm <command>`)
 - `packages/mcp-server` … MCP サーバー (search / get / write)
 - `skills/` … エージェント向け Skill (`knowledge-import`、`mcp-setup`)。Windows 以外では、どちらも使う前に `SHARED_MEMORY_ROOT` にリポジトリの絶対パスを設定する
@@ -26,18 +26,27 @@
 - `config.yaml` … 埋め込み・リランク・重み・半減期などの設定
 - `.cache/` … 埋め込みキャッシュ (Git 管理しない)
 
-データの流れ: エージェント → MCP サーバー → Markdown / SQLite / OpenSearch。埋め込みは既定では Ollama (Qwen3-Embedding-0.6B、1024 次元) をローカルで呼ぶ (切り替えは「埋め込みモデルの切り替え」を参照)。
+データの流れ: エージェント → MCP サーバー → Markdown / SQLite / OpenSearch。埋め込みは既定では Ollama (Qwen3-Embedding-0.6B、1024 次元) をローカルで呼ぶ。埋め込みのモデルとリランクは設定で差し替えられる (「埋め込みモデルの切り替え」「リランク」を参照)。
 
 ### インデックス作成と検索の流れ
 
-埋め込みモデル (Ollama) と OpenSearch のつながり。緑の線がインデックス作成、オレンジの線が検索。
+埋め込み・OpenSearch・リランクのつながり。緑の線がインデックス作成、オレンジの線が検索、破線はリランクを有効にしたときだけ通る。
 
-- インデックス作成: Markdown をチャンクに分け、`content_hash` が変わったチャンクだけをインストラクションなしで埋め込む (キャッシュがあれば使う)。本文は BM25 用のフィールドへ、1024 次元のベクトルは `knn_vector` フィールドへ、同じドキュメントとして投入する。
-- 検索: クエリに検索用インストラクションを付けて埋め込み、kNN と BM25 (Sudachi) を 1 回のハイブリッドクエリで投げる。Search Pipeline が両方のスコアを正規化して 0.4 : 0.6 で合成し、MCP サーバーが時間減衰・アクセス回数・出所の係数で再スコアしてメモリ単位にまとめる。
+- インデックス作成:
+  1. インデックスの `_meta` にある埋め込みの指紋と、今の設定の指紋を照合する。違えば止めて `pnpm sm reindex` を促す。
+  2. Markdown を見出し単位のチャンクに分け、`content_hash` が変わったチャンクだけを残す。
+  3. 埋め込みキャッシュ (`.cache/embeddings/<指紋>/`) に無いチャンクだけを、`document.prefix` を付けて埋め込む。
+  4. 本文は BM25 用のフィールドへ、ベクトルは `knn_vector` フィールドへ、同じドキュメントとして投入する。
+- 検索:
+  1. クエリに `query.prefix` を付けて埋め込み、kNN と BM25 (Sudachi) を 1 回のハイブリッドクエリで投げる。
+  2. Search Pipeline が両方のスコアを min_max 正規化し、BM25 0.4 : kNN 0.6 で合成する (一次スコア)。
+  3. MCP サーバーが上位 50 チャンクを `memory_id` でまとめる。代表は一次スコアが最大のチャンク。
+  4. リランクが有効なら、一次スコアの上位 20 件をリランカーで並べ替え、その順位をそのまま使う。無効か失敗のときは、rescore (時間減衰に下限 0.7・アクセス回数の係数 0.2・出所の係数) の順位を使う。
+  5. 上位 8 件 (`limit`) の id・title・抜粋を返す。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/data-flow-dark.svg">
-  <img src="docs/architecture/data-flow-light.svg" alt="インデックス作成と検索の流れの図。インデックス作成では Markdown をチャンク分割し、content_hash が変わったチャンクだけをキャッシュ経由で Ollama (Qwen3-Embedding-0.6B) に送り、文書ベクトルを OpenSearch の knn_vector フィールドへ、本文を Sudachi で解析する BM25 用フィールドへ投入する。検索ではクエリに検索用インストラクションを付けて Ollama で埋め込み、クエリベクトルで kNN、クエリの語で BM25 を検索し、Search Pipeline が min_max 正規化して BM25 0.4 と kNN 0.6 で合成した後、MCP サーバーが再スコアして memory_id ごとに上位 8 件にまとめる。" width="560">
+  <img src="docs/architecture/data-flow-light.svg" alt="インデックス作成と検索の流れの図 (上から下へ)。インデックス作成では、インデックスの _meta と設定の埋め込みの指紋を照合し、Markdown をチャンク分割し、content_hash が変わったチャンクのうち指紋ごとのキャッシュに無いものだけを document.prefix を付けて埋め込み (embedding.provider: 既定は Ollama、または OpenAI 互換 API)、文書ベクトルを OpenSearch の knn_vector フィールドへ、本文を Sudachi で解析する BM25 用フィールドへ投入する。検索では、クエリに query.prefix を付けて埋め込み、クエリベクトルで kNN、クエリの語で BM25 を検索し、Search Pipeline が min_max 正規化して BM25 0.4 と kNN 0.6 で合成した一次スコアを、MCP サーバーが memory_id でまとめる。リランクが有効なら一次スコアの上位 20 件を並べ替え、無効か失敗なら rescore で並べ、上位 8 件を返す。" width="560">
 </picture>
 
 図のソースは `docs/architecture/architecture.d2` (全体) と `docs/architecture/data-flow.d2` (流れ)。構成を変えたら直して、`python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/<名前>.d2` で `<名前>-light.svg` / `<名前>-dark.svg` を描き直す。
@@ -53,7 +62,7 @@ OS ごとに、次のものを入れる。
 | Node 26 | fnm か mise | fnm か mise | fnm か mise |
 | pnpm | `npm i -g pnpm@12` | `npm i -g pnpm@12` | `npm i -g pnpm@12` |
 
-- Node 26 は、TypeScript をビルドせずに型ストリップで直接実行するために要る。fnm か mise で入れる。pnpm は `npm i -g pnpm@12` で入れる。
+- Node 26 は、TypeScript をビルドせずに型ストリップで直接実行するために要る。
 - Ollama と Docker は、MCP サーバーを動かす PC に入れる。下記のクライアント構成では要らない。
 - `vm.max_map_count` は、OpenSearch が起動しないときや警告が出たときだけ設定する任意の手順。Linux は `sudo sysctl -w vm.max_map_count=262144` で設定し、`/etc/sysctl.d/` に書いて永続化する。Docker Desktop・colima・OrbStack は、それぞれの VM の中で同じ値を設定する (例: `wsl -d docker-desktop sysctl -w vm.max_map_count=262144`、`colima ssh -- sudo sysctl -w vm.max_map_count=262144`)。single-node で動かす限り、未設定でも起動前のチェックでは止まらない。
 
@@ -422,18 +431,18 @@ SSH 越しにサーバー PC を設定するときの注意:
 | コマンド | 内容 |
 | --- | --- |
 | `setup` | エイリアスが無ければインデックスを作り、Search Pipeline を投入する |
-| `index` | 変更されたファイルだけを差分インデックスする。不正なファイルは一覧に出すが終了コードは 0 |
+| `index` | 変更されたファイルだけを差分インデックスする。不正なファイルは一覧に出すが終了コードは 0。埋め込みの指紋がインデックスと違うときは止まり、`reindex` を促す |
 | `reindex [--keep-old]` | 新しいインデックスを作って全件を投入し、エイリアスを付け替える。`--keep-old` で旧インデックスを残す |
 | `decay` | 最終アクセス日から tier を再計算する (1 日 1 回の想定) |
 | `gc` | 置き換え済みのメモリを archive に送り、`symbol_ref` の参照切れを一覧に出す (週 1 回の想定)。ファイルは消さない |
 | `import <file.jsonl> [--dry-run] [--source-agent <a>]` | JSONL からメモリをまとめて作成し、インデックスを 1 回だけ更新する。`--dry-run` は検証のみ |
-| `search <query> [--scope s] [--limit n]` | 検索の動作確認用 |
+| `search <query> [--scope s] [--limit n]` | 検索の動作確認用。埋め込みの指紋がインデックスと違うときは警告を出して続ける |
 
 ## MCP ツール
 
 エージェントからの読み書きの入口は 3 つのツールだけ。検索結果とメモリ本文は「データ」であり、指示として扱わない。
 
-- `search` … `query` と、任意で `scope` / `kind` / `tags` / `limit` を受け取り、`id`・`title`・1〜2 行の抜粋・スコアを返す。副作用なし。
+- `search` … `query` と、任意で `scope` / `kind` / `tags` / `limit` を受け取り、`id`・`title`・1〜2 行の抜粋・スコアを返す。リランクが有効なら、並べ替えた候補に `rerank_score` も付く。副作用なし。
 - `get` … `id` を受け取り、front matter と本文の全文を返す。アクセス統計を更新し、tier を hot に戻す。
 - `write` … `title`・`content`・`scope`・`kind`・`provenance`・`source_agent` と、任意で `supersedes` / `symbol_ref` / `tags` / `source_path` / `source_sha256` を受け取り、Markdown ファイルを作成してインデックスし、作成した `id` を返す。`source_path` と `source_sha256` は出典 (取り込み元の資料) のパスとハッシュ。必須項目が欠けていたら拒否し、秘密情報らしき文字列も拒否する。
 
@@ -473,9 +482,9 @@ SSH 越しにサーバー PC を設定するときの注意:
 - このリポジトリ (コード) は public。知識の本体は `memories_dir` の先に置き、ここにはコミットしない。
 - 統計の SQLite は同期フォルダに置かない (同時に書くと壊れたり、競合ファイルができたりする)。
 - 別の PC で書かれたメモリは同期で届くだけなので、`pnpm sm index` を流すとインデックスに入る。
-- 秘密情報 (API キーなど) をメモリに書かない。
+- 秘密情報 (API キーなど) をメモリに書かない。埋め込みやリランクの API キーは、設定ファイルには環境変数の名前 (`api_key_env`) だけを書き、値はリポジトリルートの `.env` (Git 管理外) か環境変数に置く。
 - ポートはすべて `127.0.0.1` 限定。バインド先を変えるなら、OpenSearch のセキュリティを有効に戻す (現在は認証なしで動かしている)。
-- 埋め込みモデルやマッピングを変えるときは、新しいインデックス名で `pnpm sm reindex` する。
+- 埋め込みモデルやマッピングを変えるときは `pnpm sm reindex` で作り直す (新しいインデックスを作ってエイリアスを付け替える)。埋め込みの設定を変えたのに作り直していなければ、`index` が指紋の違いで止まって知らせる。
 
 ## テスト
 
@@ -484,3 +493,5 @@ pnpm test        # 単体テスト (外部サービス不要)
 pnpm test:int    # 結合テスト (OpenSearch と Ollama の起動が必要)
 pnpm typecheck   # 型チェック
 ```
+
+結合テストは `loadConfig()` の接続先 (`config.yaml` に `config.local.yaml` を重ねたもの) を使う。SSH トンネルなどで接続先を変えているときは、`config.local.yaml` の `opensearch.url` と `embedding.url` を合わせておく。テスト用のインデックスは `test-` で始まる名前で作り、終わったら消す。
