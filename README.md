@@ -1,11 +1,15 @@
 # shared-memory
 
+English: [README.en.md](README.en.md)
+
 複数の AI エージェント (Claude Code / Codex / Kimi) と自分自身が共通で参照する知識ベースを、ローカル PC 内で完結する RAG として動かすリポジトリ。Markdown ファイルを唯一の正とし、OpenSearch はいつでも再構築できる派生インデックスとして扱う。
 
-<picture>
+<a href="docs/architecture/architecture-light.svg"><picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg">
-  <img src="docs/architecture/architecture-light.svg" alt="shared-memory のアーキテクチャ図。上から順に、Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送る。MCP サーバーと CLI は packages/core を共有し、定期実行 (タスクスケジューラ / launchd / systemd) が CLI の decay / gc を起動する。アプリはデータ (Markdown が唯一の正、OpenSearch + Sudachi が派生インデックスで _meta に埋め込みの指紋を持つ、SQLite がアクセス統計) を読み書きし、ローカルのモデル (埋め込みの既定の Ollama、任意の TEI リランカー) を呼ぶ。設定で明示したときだけ、外部の OpenAI 互換の埋め込み API やリランク API に本文を送る。Markdown は開発者が差分を見てコミットし、GitHub に push する。">
-</picture>
+  <img src="docs/architecture/architecture-light.svg" width="100%" alt="shared-memory のアーキテクチャ図。上から順に、Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送る。MCP サーバーと CLI は packages/core を共有し、定期実行 (タスクスケジューラ / launchd / systemd) が CLI の decay / gc を起動する。アプリはデータ (Markdown が唯一の正、OpenSearch + Sudachi が派生インデックスで _meta に埋め込みの指紋を持つ、SQLite がアクセス統計) を読み書きし、ローカルのモデル (埋め込みの既定の Ollama、任意の TEI リランカー) を呼ぶ。設定で明示したときだけ、外部の OpenAI 互換の埋め込み API やリランク API に本文を送る。Markdown は開発者が差分を見てコミットし、GitHub に push する。">
+</picture></a>
+
+図をクリックすると原寸で開く。SVG: [ライト](docs/architecture/architecture-light.svg) / [ダーク](docs/architecture/architecture-dark.svg)
 
 設計の詳細は次を参照。
 
@@ -105,7 +109,7 @@ MCP のエンドポイントは `http://127.0.0.1:7820/mcp`。
 
 ### 常駐と定期実行
 
-Windows は `scripts/register-tasks.ps1` でタスクスケジューラに登録する (`-WhatIf` で内容確認、`-Unregister` で削除)。MCP サーバーの起動、`decay` (毎日 09:00)、`gc` (毎週日曜 09:30) の 3 つが入る。
+Windows は `scripts/register-tasks.ps1` でタスクスケジューラに登録する (`-WhatIf` で内容確認、`-Unregister` で削除)。MCP サーバーの起動、`decay` (毎日 09:00)、`gc` (毎週日曜 09:30)、評価とフィードバック (`eval --notify` と `feedback --notify`、毎週日曜 10:00) の 4 つが入る。
 
 macOS は launchd、Linux は systemd のユーザー unit で常駐させる。`__NODE__` には `realpath "$(command -v node)"` で出る実体のパスを書く。fnm の `which node` は再起動で消える一時ディレクトリ (`fnm_multishells/...`) を指すので、そのまま書かない。fnm や mise の shim も launchd / systemd からは使えない。ログのフォルダは先に作る (`mkdir -p __ROOT__/.cache/logs`)。
 
@@ -415,7 +419,7 @@ systemctl --user enable --now shared-memory-tunnel.service
 ```
 
 - サーバー PC: 上の「セットアップ」の 1〜6 と `scripts/register-tasks.ps1` を行う。どのタスクも対話ログオンで動くので、再起動したらログオンしておく。スリープも切っておく。
-- クライアント PC: 自分の MCP サーバーとタスク (`SharedMemory-MCP`・`SharedMemory-Decay`・`SharedMemory-GC`) は止め、上の ssh をログオン時に起動して、切れたらつなぎ直すようにしておく。OpenSearch と Ollama も要らない。
+- クライアント PC: 自分の MCP サーバーとタスク (`SharedMemory-MCP`・`SharedMemory-Decay`・`SharedMemory-GC`・`SharedMemory-Eval`) は止め、上の ssh をログオン時に起動して、切れたらつなぎ直すようにしておく。OpenSearch と Ollama も要らない。
 - メモリの Markdown はサーバー PC の `memories_dir` にだけ書かれる。統計の SQLite もサーバー PC のものだけを使う。
 
 SSH 越しにサーバー PC を設定するときの注意:
@@ -437,6 +441,9 @@ SSH 越しにサーバー PC を設定するときの注意:
 | `gc` | 置き換え済みのメモリを archive に送り、`symbol_ref` の参照切れを一覧に出す (週 1 回の想定)。ファイルは消さない |
 | `import <file.jsonl> [--dry-run] [--source-agent <a>]` | JSONL からメモリをまとめて作成し、インデックスを 1 回だけ更新する。`--dry-run` は検証のみ |
 | `search <query> [--scope s] [--limit n]` | 検索の動作確認用。埋め込みの指紋がインデックスと違うときは警告を出して続ける |
+| `eval [--notify]` | 評価セットを本番の設定と一次スコアだけで測り、レポートと履歴を評価のディレクトリに書く。`--notify` で要約をトーストで知らせる。評価セットが空なら終了コード 1 |
+| `eval import-lab <file.jsonl>` | lab の評価セットを、ラベルの出どころ「エージェント」として評価セットに取り込む |
+| `feedback [--notify] [--days n]` | 過去 n 日 (既定 7) の検索ログと評価セットから判定のセッションを作り、画面をブラウザーで開く。`--notify` ならトーストで知らせる |
 
 ## MCP ツール
 
@@ -476,6 +483,68 @@ SSH 越しにサーバー PC を設定するときの注意:
 ### 検索ログ
 
 MCP の `search` と `get`、CLI の `search` は、統計と同じ SQLite (`state/stats.sqlite`) の `search_log` と `get_log` に記録する。記録に失敗しても検索は止まらない。ログは PC ごとで外には出さず、毎日の `decay` で 90 日より古い行を消す。
+
+## 評価とフィードバック
+
+検索の質を週 1 回測り、rescore が一次スコアの順位を悪くしていないかを見張る。あわせて、その週に実際に使われた問いを人がブラウザーで判定し、評価セットを育てる。どちらも設定は自動では変えない。検討の経緯と判断の根拠は [仕様](docs/specs/rescore-guard-and-temporal-eval.md) にある。
+
+### 評価セットと評価のディレクトリ
+
+評価セット・レポート・実行の履歴・フィードバックのセッションは、すべて評価のディレクトリに置く。場所は `config.local.yaml` の `eval.dir` で選ぶ。空 (既定) なら `memories_dir` の隣の `eval/`。正本と同じく、このリポジトリには置かない。
+
+| ファイル | 内容 |
+| --- | --- |
+| `eval-set.jsonl` | 評価セット。1 行 1 問で、問い・問われた時点・種類 (合成 / 実クエリ)・正解 (メモリの `id` と等級 2 / 1)・鮮度が効く問いの印・ラベルの記録 (出どころ「エージェント」か「人」、付けた時刻、人ならセッション ID) を持つ |
+| `history.jsonl` | `sm eval` の実行の履歴 (1 行 1 回)。画面のグラフの材料になる |
+| `reports/<YYYY-MM-DD>.md` | 実行ごとのレポート |
+| `sessions/<id>.json` | フィードバックのセッション (選んだ問い・混ぜたリスト・下書き・確定した判定と勝ち負け) |
+
+- 同じ問いに人とエージェントのラベルがあれば、人のラベルを使う。
+- lab の評価セット (`{qid, set, query, relevant}` の JSONL) は `pnpm sm eval import-lab <file.jsonl>` で取り込む。出どころは「エージェント」、問われた時点は 2026-10-17 になる。同じ問い (前後と連続の空白、大文字小文字を揃えて比べる) が既にあれば足さない。
+
+### sm eval とガード
+
+`pnpm sm eval` は、評価セットを 2 つの構成で測る。本番の設定 (`config.yaml` の rescore あり。リランクが有効ならそれも含む) と、一次スコアだけ (rescore なし。リランクの有無は本番に合わせる)。どちらも本番の検索 (`searchMemories`) を通す。
+
+- 各問いは、問われた時点の状態で測る。その時点より後に作られた記憶は検索対象から外し、置き換えの状態と時間減衰の「今」もその時点に合わせる。アクセス回数は評価の時点の値を使う (レポートに「アクセスの項は漏れを含む」と書く)。
+- 出すもの: 構成ごとの nDCG@10・Recall@5・MRR@10、問いごとの nDCG@10 の差 (本番 − 一次スコアだけ) とブートストラップ (5,000 回) の 95% 区間、鮮度が効く問いだけの nDCG@10 と「新しい版が古い版より上に来た割合」、正解と検索対象の作成日の分布 (週ごと)、パラメーターの調整を見直す条件の判定。
+- レポートを `reports/` に書き、履歴に 1 行足し、要約とレポートの場所を標準出力に出す。`--json` なら実行の結果を JSON で出す。
+
+ガードは、rescore が一次スコアだけの順位より有意に悪くしていないかを見張る。
+
+- 差の 95% 区間の上端が 0 未満なら、その回は「悪化」。悪化が 2 回続いたら警告する。1 回だけでは警告しない。
+- フィードバックのインターリービングの累計で、一次スコアだけが本番に有意に勝っている (符号検定で p < 0.05) ときも警告する。
+- 警告はトースト (`--notify`) とレポートで知らせるだけで、設定は変えない。直すかどうかは人が決めて `config.yaml` を変える。
+
+レポートの「見直す条件」は、(a) 検索対象の作成日の幅が半減期の 2 倍以上、(b) 人が判定した問いが 150 問以上でそのうち鮮度が効く問いが 30 問以上、(c) ガードの警告か、新しい版が上に来た割合が 0.6 未満、の 3 つがすべてそろったときに「はい」になる。そろうまでは rescore のパラメーターを調整しない。
+
+### 週 1 回の流れ
+
+1. Windows では、`scripts/register-tasks.ps1` が登録する `SharedMemory-Eval` が、毎週日曜 10:00 (gc の 30 分後) に `eval --notify` と `feedback --notify` を続けて走らせる。
+2. `eval --notify` が評価し、ガードの判定・本番の nDCG@10・見直す条件をトーストで知らせる。
+3. `feedback --notify` が、過去 7 日の MCP の検索ログと評価セットから判定する問いを選んでセッションを作り、トーストで知らせる。トーストをクリックすると画面がブラウザーで開く。
+4. 画面で判定し、「確定して送る」を押す。
+
+- 手で始めるときは `pnpm sm feedback` (`--days <n>` で遡る日数を変える)。セッションを作って既定のブラウザーで画面を開き、結果を待たずに終わる。判定する問いが無ければセッションを作らない。
+- Windows 以外ではトーストを出さず、レポートの場所と画面の URL を標準出力に出す。macOS / Linux で定期実行するときは、上の `gc` と同じ形の plist / unit を `eval --notify` 用と `feedback --notify` 用に 1 つずつ作り、gc より後の時刻に週 1 回走らせる。
+- サーバー集約構成では、評価と通知はサーバー PC で行う。クライアント PC からは、SSH トンネルで転送した同じ URL (`http://127.0.0.1:7820/feedback/...`) を開く。
+
+### フィードバックの画面
+
+![フィードバックの画面。上に要約 (ガード・本番の nDCG@10・インターリービングの累計・評価セットの問い数) とグラフ 4 つ、下に 10 問の判定の一覧と、1 問分の結果のカード (答えている / 一部 / 関係ない のボタン) が並ぶ](docs/assets/feedback-screen.png)
+
+画面の例 (ダミーのデータ)。MCP サーバーのプロセスが、`/mcp` と同じポートの `/feedback/<セッション ID>?t=<合言葉>` で配る。外部の読み込みはせず、記憶の本文を外に出さない。
+
+- 上に、ガード・本番の nDCG@10・インターリービングの累計・評価セットの問い数の要約と、グラフ 4 つ (nDCG@10 の推移、ガードの差と 95% 区間、インターリービングの勝ち負け、正解の作成日の分布) が並ぶ。
+- 判定は 1 回 10 問まで。その週にエージェントが実際に投げた問いのうち、2 つの構成で上位 10 件が違うものを優先し、足りなければ評価セットの人の判定が無い問いで埋める。
+- 結果は、本番と一次スコアだけの順位を交互に混ぜた 10 件 (インターリービング) で、どちら由来かは伏せる。カードごとに「答えている / 一部 / 関係ない」を選び、必要なら「新しい版があり、これは古い」に印を付ける。
+- 1 件選ぶたびに下書きとして保存され、タブを閉じても続きから再開できる。
+- 「確定して送る」で、判定が評価セットに出どころ「人」(セッション ID と時刻つき) として書かれ、インターリービングの勝ち負けがセッションに記録される。未判定の問いは判定なしとして扱う。確定したあとは直せない。
+- URL の合言葉 (`t=`) が合わない要求は拒む。セッションを作る HTTP の道は無く、作れるのは CLI だけ。判定の書き込みは MCP のツールにもしていないので、エージェントが人の判定を名乗って書くことはできない。URL には合言葉が入るので、人に渡さない。
+
+### アクセスに数えない
+
+`sm eval` とフィードバックの画面は、core の検索と読み出しを直接呼ぶ。記憶を読んでも `access_count` と `last_accessed_at` は増えず、検索ログと get のログにも書かない。評価セットに入った記憶ほどアクセスの項で有利になる漏れを防ぎ、ログを「エージェントと人が実際に使った検索」だけに保つため。
 
 ## メモリファイルの書式
 
