@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="color-scheme" content="light dark">
+    <title>検索フィードバック</title>
+    <link rel="stylesheet" href="/feedback/static/feedback.css">
+    <script src="/feedback/static/feedback.js" defer></script>
+  </head>
+  <body>
+    <!-- 文言は feedback.js の辞書 (STRINGS) にあり、data-t のキーで入れる (日本語・英語 × 一般向け・専門向け)。
+         ここに書いた日本語は、スクリプトが動く前の表示と、キーが見つからないときの予備 -->
+    <a class="skip" href="#judge" data-t="skip">判定へ移る</a>
+
+    <header class="bar">
+      <div class="bar-inner wrap">
+        <a href="#top" class="brand">shared-memory <span class="muted" data-t="brand_sub">/ 検索フィードバック</span></a>
+        <nav class="bar-nav" aria-label="ページ内" data-t-aria="nav_label">
+          <a href="#overview" data-t="nav_overview">結果の一覧</a>
+          <a href="#judge" data-t="nav_judge">判定</a>
+        </nav>
+        <p class="bar-meta mono" id="bar-meta"></p>
+        <p class="save-state mono" id="save-state" role="status" aria-live="polite" data-state="idle"></p>
+        <div class="switch mode-switch" role="group" aria-label="表示のモード" data-t-aria="mode_label">
+          <button type="button" class="switch-btn mode-btn" data-mode="general" aria-pressed="true" title="専門用語を使わずに表示する" data-t-title="mode_general_title"><span data-t="mode_general">一般</span><span class="mode-suffix" data-t="mode_suffix">向け</span></button>
+          <button type="button" class="switch-btn mode-btn" data-mode="expert" aria-pressed="false" title="評価の指標名 (nDCG・インターリービング・95% 区間など) で表示する" data-t-title="mode_expert_title"><span data-t="mode_expert">専門</span><span class="mode-suffix" data-t="mode_suffix">向け</span></button>
+        </div>
+        <div class="switch" role="group" aria-label="言語" data-t-aria="lang_label">
+          <button type="button" class="switch-btn lang-btn" data-lang="ja" lang="ja" aria-pressed="true" aria-label="日本語">JA</button>
+          <button type="button" class="switch-btn lang-btn" data-lang="en" lang="en" aria-pressed="false" aria-label="English">EN</button>
+        </div>
+        <button type="button" class="btn btn-primary bar-confirm" id="bar-confirm" disabled data-t="confirm_button">確定して送る</button>
+      </div>
+    </header>
+
+    <main id="top" class="wrap">
+      <p class="notice" id="notice" role="alert" hidden></p>
+
+      <div id="app" hidden>
+        <section class="hero" aria-labelledby="hero-title">
+          <div>
+            <p class="eyebrow mono" id="hero-eyebrow"></p>
+            <h1 class="hero-title" id="hero-title"><span data-t="hero_title_1">今週の検索は、</span><br><span data-t="hero_title_2">役に立っていましたか。</span></h1>
+            <p class="lead muted" data-t="hero_lead"></p>
+          </div>
+          <dl class="summary" id="summary">
+            <div class="summary-cell"><dt class="muted" data-t="sum_guard"></dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_ndcg"></dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_interleave"></dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_evalset"></dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
+          </dl>
+        </section>
+
+        <section id="overview" class="section" aria-labelledby="overview-title">
+          <div class="section-head">
+            <h2 class="heading h2" id="overview-title" data-t="overview_title">結果の一覧</h2>
+            <p class="mono small muted" id="overview-meta"></p>
+          </div>
+          <div class="charts">
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title" data-t="ndcg_title"></span>
+                <span class="legend small muted"><span class="key key-line"></span><span data-t="prod"></span><span class="key key-dash"></span><span data-t="prim"></span></span>
+              </figcaption>
+              <div class="chart-body" id="chart-ndcg"></div>
+              <p class="chart-note small muted" data-t="ndcg_note"></p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title" data-t="guard_title"></span>
+                <span class="small muted" data-t="guard_sub"></span>
+              </figcaption>
+              <div class="chart-body" id="chart-guard"></div>
+              <p class="chart-note small muted" data-t="guard_note"></p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title" data-t="il_title"></span>
+                <span class="mono small muted nowrap" id="chart-interleave-p" data-expert-only></span>
+              </figcaption>
+              <div class="chart-body" id="chart-interleave"></div>
+              <p class="chart-note legend small muted"><span class="key key-win"></span><span data-t="il_win"></span><span class="key key-loss"></span><span data-t="il_loss"></span><span class="key key-tie"></span><span data-t="il_tie"></span></p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title" data-t="created_title"></span>
+                <span class="small muted" data-t="created_sub"></span>
+              </figcaption>
+              <div class="chart-body" id="chart-created"></div>
+              <p class="chart-note legend small muted"><span class="key key-corpus"></span><span data-t="created_corpus"></span><span class="key key-gold"></span><span data-t="created_gold"></span><span class="tag tag-warning" id="created-warning" hidden></span></p>
+            </figure>
+          </div>
+        </section>
+
+        <section id="judge" class="section section-rule" aria-labelledby="judge-title" tabindex="-1">
+          <div class="judge-head">
+            <div>
+              <h2 class="heading h2" id="judge-title" data-t="judge_title">判定</h2>
+              <p class="small muted" data-t="judge_hint"></p>
+            </div>
+            <div class="progress">
+              <div class="progress-text mono small muted"><span id="progress-count"></span><span id="progress-pct">0%</span></div>
+              <div class="progress-track" id="progress-track" role="progressbar" aria-label="判定の進み具合" data-t-aria="progress_label" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
+            </div>
+          </div>
+
+          <ol class="qlist mono" id="qlist" aria-label="問いの一覧" data-t-aria="qlist_label"></ol>
+
+          <article class="card" id="card" aria-labelledby="card-query">
+            <header class="card-head">
+              <p class="card-meta mono small muted" id="card-meta"></p>
+              <h3 class="heading card-query" id="card-query"></h3>
+            </header>
+            <ul class="results" id="results"></ul>
+            <footer class="card-foot">
+              <button type="button" class="btn btn-text" id="prev-q"></button>
+              <p class="small muted" data-t="card_note"></p>
+              <button type="button" class="btn btn-outline" id="next-q"></button>
+            </footer>
+          </article>
+        </section>
+
+        <section id="confirm" class="confirm" aria-labelledby="confirm-title">
+          <div>
+            <h2 class="heading h2" id="confirm-title" data-t="confirm_title"></h2>
+            <p class="lead muted" id="confirm-text"></p>
+            <p class="mono small muted" id="confirm-meta"></p>
+          </div>
+          <button type="button" class="btn btn-primary btn-large heading" id="confirm-btn" disabled data-t="confirm_button">確定して送る</button>
+        </section>
+      </div>
+
+      <section class="done" id="done" hidden aria-labelledby="done-title" tabindex="-1">
+        <p class="eyebrow mono" id="done-eyebrow"></p>
+        <h1 class="hero-title" id="done-title"></h1>
+        <p class="lead muted" id="done-text"></p>
+        <dl class="summary summary-3" id="done-summary">
+          <div class="summary-cell"><dt class="muted" data-t="il_win_short"></dt><dd class="summary-value mono" id="done-wins">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-t="il_loss_short"></dt><dd class="summary-value mono" id="done-losses">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-t="il_tie_short"></dt><dd class="summary-value mono" id="done-ties">—</dd></div>
+        </dl>
+        <p class="small muted" data-t="done_foot"></p>
+      </section>
+    </main>
+
+    <dialog class="dialog" id="confirm-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-body">
+        <h2 class="heading h2" id="dialog-title" data-t="dialog_title">確定して送りますか</h2>
+        <p id="dialog-text"></p>
+        <p class="small muted" data-t="dialog_final">確定したあとは直せません。</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-outline" id="dialog-cancel" data-t="dialog_cancel">戻る</button>
+          <button type="button" class="btn btn-primary" id="dialog-ok" data-t="dialog_ok">確定する</button>
+        </div>
+      </div>
+    </dialog>
+  </body>
+</html>

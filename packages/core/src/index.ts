@@ -13,3 +13,8 @@ export * from "./tiers.ts";
 export * from "./import.ts";
 export * from "./metrics.ts";
 export * from "./freshness.ts";
+export * from "./evalset.ts";
+export * from "./interleave.ts";
+export * from "./evaluate.ts";
+export * from "./feedback-session.ts";
+export * from "./eval-report.ts";

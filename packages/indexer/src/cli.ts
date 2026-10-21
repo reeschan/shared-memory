@@ -23,6 +23,9 @@ import {
   type IndexReport,
   type SourceAgent,
 } from "@shared-memory/core";
+import { evalDeps, importLabCommand, runEvalCommand } from "./eval-command.ts";
+import { feedbackDeps, runFeedbackCommand } from "./feedback-command.ts";
+import { evalNotice, notify, openUrl } from "./notify.ts";
 
 type Args = {
   positionals: string[];
@@ -32,6 +35,8 @@ type Args = {
   limit?: number;
   dryRun: boolean;
   sourceAgent?: string;
+  notify: boolean;
+  days?: number;
 };
 
 type Command = {
@@ -205,7 +210,67 @@ const COMMANDS: Record<string, Command> = {
       emit(args.json, results, text);
     },
   },
+  eval: {
+    usage:
+      "eval [--notify] | eval import-lab <file.jsonl>  評価セットを本番と一次スコアだけで測り、レポートと履歴を残す (--notify で要約をトーストで知らせる) / lab の評価セットを取り込む",
+    run: async (cfg, deps, args) => {
+      const [sub, ...rest] = args.positionals;
+      if (sub === undefined) {
+        const r = await runEvalCommand(cfg, evalDeps(cfg, deps), { json: args.json });
+        if (args.notify && r.run !== undefined) {
+          const ok = await notify(evalNotice(r.run));
+          if (!ok) console.error("トーストで知らせられませんでした (要約は上の出力を見てください)");
+        }
+        return r.code;
+      }
+      if (sub === "import-lab") {
+        if (rest.length !== 1) throw new UsageError("lab の評価セットの JSONL ファイルを 1 つ指定してください");
+        const r = await importLabCommand(cfg, rest[0]!, { json: args.json });
+        return r.code;
+      }
+      throw new UsageError(`eval のサブコマンドが不明です: ${sub}`);
+    },
+  },
+  feedback: {
+    usage:
+      "feedback [--notify] [--days <n>]  過去 n 日 (既定 7) の検索から判定の画面を作り、ブラウザーで開く (--notify ならトーストで知らせる)",
+    run: async (cfg, deps, args) => {
+      if (args.positionals.length > 0) throw new UsageError("feedback は引数を取りません");
+      const r = await runFeedbackCommand(cfg, feedbackDeps(cfg, deps), { days: args.days });
+      if (r.status === "empty") {
+        emit(args.json, { status: "empty", message: r.message }, r.message);
+        return 0;
+      }
+      const n = r.session.items.length;
+      const base = { status: "created", session_id: r.session.id, questions: n };
+      if (args.notify) {
+        const ok = await notify({
+          title: "shared-memory: 今週の検索の判定",
+          body: `今週の検索結果が役に立ったか、${n} 問の判定をお願いします (約 ${Math.max(1, Math.round(n / 2))} 分)。クリックで画面を開きます`,
+          url: r.url,
+        });
+        // 定期タスクは標準出力をログに残すので、知らせられたときは URL (合言葉入り) を出さない
+        if (ok) {
+          emit(args.json, { ...base, notified: true }, `トーストで知らせました (セッション ${r.session.id}、問い ${n} 件)`);
+          return 0;
+        }
+        emit(args.json, { ...base, notified: false, url: r.url }, `セッション ${r.session.id} (問い ${n} 件): ${r.url}`);
+        return 0;
+      }
+      const opened = await openUrl(r.url);
+      const note = opened ? "ブラウザーで開きます" : "ブラウザーを開けませんでした。次の URL を開いてください";
+      emit(args.json, { ...base, opened, url: r.url }, `セッション ${r.session.id} (問い ${n} 件)。${note}\n${r.url}`);
+      return 0;
+    },
+  },
 };
+
+function parseDays(v: string | undefined): number | undefined {
+  if (v === undefined) return undefined;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1) throw new UsageError(`--days は 1 以上の整数にしてください: ${v}`);
+  return n;
+}
 
 function usage(): string {
   const lines = Object.values(COMMANDS).map((c) => `  pnpm sm ${c.usage}`);
@@ -233,6 +298,8 @@ async function main(argv: string[]): Promise<number> {
         limit: { type: "string" },
         "dry-run": { type: "boolean", default: false },
         "source-agent": { type: "string" },
+        notify: { type: "boolean", default: false },
+        days: { type: "string" },
       },
     });
   } catch (e) {
@@ -259,6 +326,8 @@ async function main(argv: string[]): Promise<number> {
       limit: parseLimit(parsed.values.limit),
       dryRun: parsed.values["dry-run"] === true,
       sourceAgent: parsed.values["source-agent"],
+      notify: parsed.values.notify === true,
+      days: parseDays(parsed.values.days),
     };
     const cfg = loadConfig();
     stats = new StatsStore(cfg.state_db);
