@@ -40,11 +40,55 @@ function primaryBetter(
     .slice(0, WORSE_LIMIT);
 }
 
-/** 人が読む Markdown のレポート */
+// ---- 一般向けの言い換え (トーストとレポートの冒頭のまとめで使う) ----
+// 本番 → いまの設定、一次スコアだけ → 内容の近さだけ、nDCG@10 → 検索の質 (100 点満点)、
+// 95% 区間 → ぶれ幅、ガード → 見張り。フィードバックの画面の一般向けと同じ言葉にそろえる。
+
+/** 0〜1 の値を 100 点満点の整数にする */
+export function points(x: number): number {
+  return Math.round(x * 100);
+}
+
+/** 差を点で (小数 1 桁、符号付き) */
+function pointsDiff(x: number): string {
+  const v = Math.abs(x * 100).toFixed(1);
+  return (x > 0 ? "+" : x < 0 ? "−" : "±") + v + " 点";
+}
+
+/** 見張り (ガード) の判定を一般向けの言葉にする */
+export function plainGuard(run: Pick<EvalRun, "guard">): string {
+  if (run.guard.alert) return "悪くなっている (2 週続けて)";
+  if (run.guard.worse) return "悪化の兆し (今週だけ)";
+  return "問題なし";
+}
+
+/** 見直す条件を一般向けの言葉にする */
+export function plainReview(run: Pick<EvalRun, "review">): string {
+  return run.review.ready ? "検討の時期 (条件がそろった)" : "まだ早い";
+}
+
+/** 一般向けのまとめ (Markdown の箇条書きの中身) */
+export function plainSummaryLines(run: EvalRun): string[] {
+  const effect =
+    run.diff.lo > 0 ? "良くなっている" : run.diff.hi < 0 ? "悪くなっている" : "はっきりした差はない";
+  return [
+    `検索の質 (100 点満点、上位 10 件に正解がどれだけ上の方に来たか): いまの設定 ${points(run.production.ndcg10)} 点 / 内容の近さだけ ${points(run.primary.ndcg10)} 点`,
+    `新しさや使われ方で並べ直した効果: ${effect} (差 ${pointsDiff(run.diff.mean)}、ぶれ幅 ${pointsDiff(run.diff.lo)} 〜 ${pointsDiff(run.diff.hi)})`,
+    `並べ直しで悪くなっていないかの見張り: ${plainGuard(run)}。設定は自動では変えない`,
+    `あなたの判定 (累計): いまの設定が良かった ${run.interleave.wins} 問 / 内容の近さだけが良かった ${run.interleave.losses} 問 / 差なし ${run.interleave.ties} 問`,
+    `並べ直しの設定の見直し: ${plainReview(run)} (人が判定した問い ${run.review.human_n} / 150 問)`,
+  ];
+}
+
+/** 人が読む Markdown のレポート。冒頭に一般向けのまとめ、そのあとに専門向けの詳しい数値 */
 export function renderReport(run: EvalRun, perQuestion: PerQuestion[], questions: EvalQuestion[]): string {
   const L: string[] = [];
   L.push(`# 評価レポート (${run.at})`, "");
   L.push(`正解のある問い: ${run.n} 件`, "");
+
+  L.push("## まとめ", "");
+  for (const line of plainSummaryLines(run)) L.push(`- ${line}`);
+  L.push("", "以下は専門向けの詳しい数値 (本番 = いまの設定、一次スコアだけ = 内容の近さだけ)。", "");
 
   L.push("## 指標 (問いの平均)", "");
   L.push("| 設定 | nDCG@10 | Recall@5 | MRR@10 |", "| --- | --- | --- | --- |");

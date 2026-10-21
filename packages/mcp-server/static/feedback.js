@@ -688,7 +688,7 @@
       const openKey = it.qid + "\u0000" + c.id;
       const isOpen = hasMore && expanded.has(openKey);
       const bodyId = name + "-body";
-      const excerptEl = h("p", { class: "result-excerpt", hidden: isOpen }, c.excerpt + (hasMore ? "…" : ""));
+      const excerptEl = h("p", { class: "result-excerpt", hidden: isOpen }, c.excerpt + (hasMore && !c.excerpt.endsWith("…") ? "…" : ""));
       const fullEl = hasMore ? h("div", { class: "result-body", id: bodyId, hidden: !isOpen }, full) : null;
       let toggle = null;
       if (hasMore) {

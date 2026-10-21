@@ -245,8 +245,8 @@ const COMMANDS: Record<string, Command> = {
       const base = { status: "created", session_id: r.session.id, questions: n };
       if (args.notify) {
         const ok = await notify({
-          title: "shared-memory: 今週の判定",
-          body: `判定する問いが ${n} 件あります。クリックで画面を開きます`,
+          title: "shared-memory: 今週の検索の判定",
+          body: `今週の検索結果が役に立ったか、${n} 問の判定をお願いします (約 ${Math.max(1, Math.round(n / 2))} 分)。クリックで画面を開きます`,
           url: r.url,
         });
         // 定期タスクは標準出力をログに残すので、知らせられたときは URL (合言葉入り) を出さない

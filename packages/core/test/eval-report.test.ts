@@ -188,3 +188,26 @@ test("summaryLines: 数行の要約に指標・ガード・インターリービ
   const alert = summaryLines(baseRun({ guard: { worse: true, alert: true, reason: "理由のダミー" } })).join("\n");
   assert.match(alert, /ガード: 警告あり \(理由のダミー\)/);
 });
+
+test("renderReport: 冒頭に一般向けのまとめ (点数・並べ直しの効果・見張り・判定・見直し) があり、詳しい数値より前に来る", () => {
+  const md = renderReport(baseRun(), [], []);
+  const head = md.split("## 指標 (問いの平均)")[0]!;
+  assert.match(head, /## まとめ/);
+  assert.match(head, /いまの設定 81 点 \/ 内容の近さだけ 70 点/);
+  assert.match(head, /並べ直した効果: 良くなっている \(差 \+11\.1 点、ぶれ幅 \+2\.3 点 〜 \+20\.5 点\)/);
+  assert.match(head, /見張り: 問題なし/);
+  assert.match(head, /いまの設定が良かった 9 問 \/ 内容の近さだけが良かった 4 問 \/ 差なし 2 問/);
+  assert.match(head, /見直し: まだ早い \(人が判定した問い 40 \/ 150 問\)/);
+  const summary = head.split("## まとめ")[1]!.split("以下は専門向け")[0]!;
+  assert.doesNotMatch(summary, /nDCG|ガード|本番|一次スコア|インターリービング|95%/);
+
+  const bad = renderReport(
+    baseRun({ diff: { mean: -0.05, lo: -0.08, hi: -0.01, win: 1, lose: 5, tie: 0 }, guard: { worse: true, alert: true, reason: "x" } }),
+    [],
+    [],
+  );
+  assert.match(bad, /並べ直した効果: 悪くなっている \(差 −5\.0 点/);
+  assert.match(bad, /見張り: 悪くなっている \(2 週続けて\)/);
+  const unclear = renderReport(baseRun({ diff: { mean: 0, lo: -0.02, hi: 0.02, win: 0, lose: 0, tie: 12 } }), [], []);
+  assert.match(unclear, /並べ直した効果: はっきりした差はない \(差 ±0\.0 点/);
+});

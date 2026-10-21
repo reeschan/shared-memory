@@ -267,15 +267,22 @@ test("openCommand: Windows は cmd /c start \"\" \"<url>\"、macOS は open、Li
   assert.deepEqual(openCommand(url, "linux"), { file: "xdg-open", args: [url], verbatim: false });
 });
 
-test("evalNotice: ガードの判定・本番の nDCG@10・見直す条件を本文にする", () => {
+test("evalNotice: 見張りの判定・検索の質 (100 点満点)・見直す条件を、専門用語を使わずに本文にする", () => {
   const run = {
     production: { ndcg10: 0.71234, recall5: 0, mrr10: 0 },
     guard: { worse: true, alert: true, reason: "dummy" },
     review: { ready: false },
   } as unknown as EvalRun;
   const n = evalNotice(run);
-  assert.match(n.body, /ガード: 警告あり/);
-  assert.match(n.body, /本番 nDCG@10 0\.712/);
-  assert.match(n.body, /見直す条件: そろっていない/);
+  assert.match(n.body, /検索の質 71 点 \(100 点満点\)/);
+  assert.match(n.body, /悪化の見張り: 悪くなっている \(2 週続けて\)/);
+  assert.match(n.body, /設定の見直し: まだ早い/);
+  assert.match(n.body, /レポートを確かめてください/);
+  assert.doesNotMatch(n.body, /nDCG|ガード|本番|一次スコア/);
   assert.equal(n.url, undefined);
+
+  const ok = evalNotice({ ...run, guard: { worse: false, alert: false, reason: null }, review: { ready: true } } as unknown as EvalRun);
+  assert.match(ok.body, /悪化の見張り: 問題なし/);
+  assert.match(ok.body, /設定の見直し: 検討の時期/);
+  assert.doesNotMatch(ok.body, /レポートを確かめて/);
 });

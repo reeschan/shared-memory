@@ -262,7 +262,7 @@ eval:
 | `gc` | `tiers.ts` の `runGc` |
 | `import <file.jsonl> [--dry-run] [--source-agent <a>]` | `import.ts` |
 | `search <query> [--scope s] [--limit n]` | `searchMemories` (動作確認用)。1 行表示は `N. title [id] (scope, score x.xxx, YYYY-MM-DD 作成)` で、`freshness.stale` なら末尾に ` [古い記憶: N 日前]`。`logSearch` (`source: "cli"`) で記録する |
-| `eval [--notify]` | `eval-command.ts` の `runEvalCommand`。`readEvalSet` (空なら「評価セットがありません…」で終了コード 1) → 本番 (`cfg`) と一次スコアだけ (`primaryOnlyConfig(cfg)`) の Searcher (`searchMemories` を `asOf` 付きで直接呼び、上位 10 件の id) → `readHistory`・`interleaveTotals` → `runEvaluation` → `appendHistory` → `<evalDir>/reports/<ローカルの YYYY-MM-DD>.md` に `renderReport` を書く。標準出力は `summaryLines` とレポートの場所 (`--json` なら `EvalRun`)。ガードが警告でも終了コードは 0。`--notify` で `notify.ts` の `notify(evalNotice(run))` (Windows のトースト。ガード・本番の nDCG@10・見直す条件)。アクセスもログも書かない |
+| `eval [--notify]` | `eval-command.ts` の `runEvalCommand`。`readEvalSet` (空なら「評価セットがありません…」で終了コード 1) → 本番 (`cfg`) と一次スコアだけ (`primaryOnlyConfig(cfg)`) の Searcher (`searchMemories` を `asOf` 付きで直接呼び、上位 10 件の id) → `readHistory`・`interleaveTotals` → `runEvaluation` → `appendHistory` → `<evalDir>/reports/<ローカルの YYYY-MM-DD>.md` に `renderReport` を書く。標準出力は `summaryLines` とレポートの場所 (`--json` なら `EvalRun`)。ガードが警告でも終了コードは 0。`--notify` で `notify.ts` の `notify(evalNotice(run))` (Windows のトースト。`plainGuard`・`points`・`plainReview` で、専門用語を使わずに見張りの判定・検索の質の点数・見直しの要否)。アクセスもログも書かない |
 | `eval import-lab <file.jsonl>` | `importLabCommand`。`fromLabEvalJsonl` で読み、`questionKey` が既にある問いは飛ばして `writeEvalSet`。取り込んだ数・飛ばした数・総数を出す |
 | `feedback [--notify] [--days n]` | `feedback-command.ts` の `runFeedbackCommand`。過去 `days` 日 (既定 7) の `readLogs` のうち `source: "mcp"` の search と `readEvalSet` から `createFeedbackSession` (本番と一次スコアだけの `SessionSearcher`、`supersededAtMap`)。材料が無ければ「今週は判定する問いがありません」で終了コード 0、セッションは作らない。URL は `http://<mcp.host>:<mcp.port>/feedback/<id>?t=<token>`。既定はブラウザーで開いて (`openUrl`) 終わる。`--notify` はトーストで知らせ、知らせられたときは URL (合言葉入り) を出さない。知らせられなければ (Windows 以外を含む) URL を出す。`readLogs` 以外の StatsStore は使わない |
 
@@ -281,18 +281,19 @@ eval:
 
 ### フィードバックの道 (`packages/mcp-server/src/feedback-routes.ts`)
 
-`/mcp` と同じポートで、`handleFeedback(req, res, url, { dir: evalDir(cfg), staticDir })` が `/feedback/` で始まる道を受け持つ。Host ヘッダーの確認は `/mcp` と同じく先に効く。CORS は開けない (画面と受け口が同じオリジン)。**MCP のツールとしては公開しない** (エージェントが「人の判定」を名乗って書けないようにするため)。セッションを作る道は持たない (作るのは CLI の `createFeedbackSession` だけ)。
+`/mcp` と同じポートで、`handleFeedback(req, res, url, { dir: evalDir(cfg), staticDir, readBodies })` が `/feedback/` で始まる道を受け持つ。Host ヘッダーの確認は `/mcp` と同じく先に効く。CORS は開けない (画面と受け口が同じオリジン)。**MCP のツールとしては公開しない** (エージェントが「人の判定」を名乗って書けないようにするため)。セッションを作る道は持たない (作るのは CLI の `createFeedbackSession` だけ)。
 
 | 道 | 応答 |
 | --- | --- |
 | `GET /feedback/<id>` | 画面の HTML (`static/feedback.html`)。`Content-Security-Policy` は `default-src 'self'` などで外部の読み込みを許さない |
 | `GET /feedback/static/<feedback.html\|feedback.css\|feedback.js>` | 静的ファイル (許可リストの 3 つだけ。ほかは 404) |
-| `GET /feedback/<id>/data?t=<token>` | `{ session: publicView(s), dashboard: { history: EvalRun[] (最新 12 件、古い順), interleave: { wins, losses, ties, sessions, p }, created_dist: 最新の EvalRun の created_dist \| null, eval_set: { questions, human } } }` |
+| `GET /feedback/<id>/data?t=<token>` | `{ session: publicView(s) (カードに body を足したもの), dashboard: { history: EvalRun[] (最新 12 件、古い順), interleave: { wins, losses, ties, sessions, p }, created_dist: 最新の EvalRun の created_dist \| null, eval_set: { questions, human } } }` |
 | `POST /feedback/<id>/draft?t=<token>` | 本文 `{ "draft": Draft }` → `saveDraft` → 200 `{ "status": "ok" }` |
 | `POST /feedback/<id>/submit?t=<token>` | 本文 `{ "draft"?: Draft }` (無ければ保存済みの下書き) → `confirmSession` → 200 `{ "status": "ok", "written": n }` |
 
 - 失敗: `<id>` が `/^[A-Za-z0-9_-]{1,64}$/` でないかセッションが無い 404、合言葉が違う 403 (比較は `timingSafeEqual`)、確定済み 409、Content-Type が `application/json` でない 415、本文が JSON でないか形が違う 400、大きすぎる 413、メソッド違い 405。応答はすべて `Cache-Control: no-store`。
 - 画面とデータの読み出しはアクセスもログも書かない (StatsStore を使わない)。
+- `readBodies?: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>` … あれば GET data のときにカードへ `body` (記憶の本文、`BODY_MAX_CHARS` = 4,000 字で切って「…」) を足す。セッションのファイルには入れない。app.ts は `scanMemories(cfg)` でファイルを直接読む。投げたら警告を出して body なしで返す。画面は body が抜粋より長いカードにだけ「全文を開く」を出す。
 
 ## 13. `tiers.ts` (decay / gc)
 
@@ -365,7 +366,8 @@ eval:
 
 ファイルには書かない (書くのは CLI)。
 
-- `export function renderReport(run: EvalRun, perQuestion: PerQuestion[], questions: EvalQuestion[]): string` … 人が読む Markdown。指標の表、差と 95% 区間、ガード、インターリービング、鮮度が効く問い、作成日の分布、見直す条件、注意 (アクセスの項の漏れなど)、本番より一次スコアだけが良かった問い (差の大きい順に最大 10 件) を出す。
+- `export function renderReport(run: EvalRun, perQuestion: PerQuestion[], questions: EvalQuestion[]): string` … 人が読む Markdown。冒頭に「## まとめ」(`plainSummaryLines` の一般向けの箇条書き)、その下に専門向けの数値として、指標の表、差と 95% 区間、ガード、インターリービング、鮮度が効く問い、作成日の分布、見直す条件、注意 (アクセスの項の漏れなど)、本番より一次スコアだけが良かった問い (差の大きい順に最大 10 件) を出す。
+- `export function plainSummaryLines(run: EvalRun): string[]` … 一般向けのまとめ (検索の質を 100 点満点で、並べ直しの効果と、ぶれ幅、見張り、あなたの判定の累計、見直しの要否)。本番 → いまの設定、一次スコアだけ → 内容の近さだけ、と言い換え、nDCG・ガード・95% などの語を使わない。`points(x)` (0〜1 → 100 点満点の整数)、`plainGuard(run)` (悪くなっている (2 週続けて) / 悪化の兆し (今週だけ) / 問題なし)、`plainReview(run)` (検討の時期 / まだ早い) も export する。
 - `export function summaryLines(run: EvalRun): string[]` … 標準出力用の数行 (指標、差と区間、ガード、インターリービング、鮮度が効く問い、見直す条件)。
 
 ## 19. `feedback-session.ts` (フィードバックのセッション)

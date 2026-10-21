@@ -3,7 +3,7 @@
 // (呼び出し側が標準出力に出す)。
 import { execFile, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type { EvalRun } from "@shared-memory/core";
+import { plainGuard, plainReview, points, type EvalRun } from "@shared-memory/core";
 
 export type Notice = { title: string; body: string; url?: string };
 
@@ -65,12 +65,14 @@ export function openUrl(url: string): Promise<boolean> {
   });
 }
 
-/** sm eval --notify の本文: ガードの判定・本番の nDCG@10・見直す条件 */
+/**
+ * sm eval --notify の本文: 見張り (ガード) の判定・検索の質 (本番の nDCG@10 を 100 点満点で)・見直す条件。
+ * 専門用語を使わない言葉にする (フィードバックの画面の一般向けと同じ言い換え)
+ */
 export function evalNotice(run: EvalRun): Notice {
-  const guard = run.guard.alert ? "警告あり" : "警告なし";
-  const review = run.review.ready ? "そろっている" : "そろっていない";
+  const check = run.guard.alert ? "。レポートを確かめてください" : "";
   return {
-    title: "shared-memory: 週の評価",
-    body: `ガード: ${guard} / 本番 nDCG@10 ${run.production.ndcg10.toFixed(3)} / 見直す条件: ${review}`,
+    title: "shared-memory: 今週の検索の測定",
+    body: `検索の質 ${points(run.production.ndcg10)} 点 (100 点満点) / 悪化の見張り: ${plainGuard(run)} / 設定の見直し: ${plainReview(run)}${check}`,
   };
 }
