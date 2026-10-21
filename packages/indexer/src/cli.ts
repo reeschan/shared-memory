@@ -23,6 +23,7 @@ import {
   type IndexReport,
   type SourceAgent,
 } from "@shared-memory/core";
+import { evalDeps, importLabCommand, runEvalCommand } from "./eval-command.ts";
 
 type Args = {
   positionals: string[];
@@ -203,6 +204,23 @@ const COMMANDS: Record<string, Command> = {
               })
               .join("\n");
       emit(args.json, results, text);
+    },
+  },
+  eval: {
+    usage:
+      "eval | eval import-lab <file.jsonl>  評価セットを本番と一次スコアだけで測り、レポートと履歴を残す / lab の評価セットを取り込む",
+    run: async (cfg, deps, args) => {
+      const [sub, ...rest] = args.positionals;
+      if (sub === undefined) {
+        const r = await runEvalCommand(cfg, evalDeps(cfg, deps), { json: args.json });
+        return r.code;
+      }
+      if (sub === "import-lab") {
+        if (rest.length !== 1) throw new UsageError("lab の評価セットの JSONL ファイルを 1 つ指定してください");
+        const r = await importLabCommand(cfg, rest[0]!, { json: args.json });
+        return r.code;
+      }
+      throw new UsageError(`eval のサブコマンドが不明です: ${sub}`);
     },
   },
 };

@@ -17,3 +17,4 @@ export * from "./evalset.ts";
 export * from "./interleave.ts";
 export * from "./evaluate.ts";
 export * from "./feedback-session.ts";
+export * from "./eval-report.ts";
