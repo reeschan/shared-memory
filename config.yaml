@@ -35,10 +35,13 @@ search:
   candidates: 50
   default_limit: 8
   weights: { bm25: 0.4, knn: 0.6 }
-  searchable_tiers: [hot, warm]
-  half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }
+  searchable_tiers: [hot, warm, cold, archive]
+  half_life_days: 90
   provenance_factor: { human_confirmed: 1.0, agent_verified: 0.85, agent_inferred: 0.7 }
   rescore: { decay_floor: 0.7, access_weight: 0.2 }
+  stale:
+    after_days: { episodic: 30, semantic: 180 }
+    provenance_multiplier: { human_confirmed: 3, agent_verified: 1, agent_inferred: 1 }
 tiers:
   warm_after_days: 7
   cold_after_days: 30

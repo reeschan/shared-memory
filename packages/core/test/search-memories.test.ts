@@ -19,10 +19,14 @@ function makeCfg(opts: { candidates?: number; decayFloor?: number } = {}): Confi
     rerank: { ...base.rerank, enabled: true, candidates: opts.candidates ?? 3 },
     search: {
       ...base.search,
-      half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 },
+      half_life_days: 90,
       provenance_factor: { human_confirmed: 1, agent_verified: 0.85, agent_inferred: 0.7 },
       rescore: { decay_floor: opts.decayFloor ?? 1, access_weight: 0 },
       default_limit: 10,
+      stale: {
+        after_days: { episodic: 30, semantic: 180 },
+        provenance_multiplier: { human_confirmed: 3, agent_verified: 1, agent_inferred: 1 },
+      },
     },
   };
 }
@@ -33,6 +37,7 @@ type Row = {
   content: string;
   title?: string;
   created_at?: string;
+  last_accessed_at?: string;
   provenance?: Provenance;
 };
 
@@ -54,6 +59,7 @@ function fakeOs(rows: Row[]): { os: OpenSearchClient; calls: { index: string; bo
             kind: "semantic",
             provenance: r.provenance ?? "human_confirmed",
             created_at: r.created_at ?? now.toISOString(),
+            ...(r.last_accessed_at !== undefined ? { last_accessed_at: r.last_accessed_at } : {}),
             tier: "hot",
             access_count: 0,
           },
@@ -147,7 +153,7 @@ test("reranker があるとき: 一次スコア上位 candidates の代表チャ
 test("rerank.candidates の候補は rescore の順ではなく一次スコアで選ぶ", async () => {
   const cfg = makeCfg({ candidates: 1, decayFloor: 0.1 });
   const { os } = fakeOs([
-    { score: 10, id: "m1", content: "m1 body", created_at: daysAgo(1000) },
+    { score: 10, id: "m1", content: "m1 body", created_at: daysAgo(10_000) },
     { score: 9, id: "m2", content: "m2 body", created_at: now.toISOString() },
     { score: 3, id: "m3", content: "m3 body", created_at: now.toISOString() },
   ]);
@@ -166,7 +172,7 @@ test("rerank.candidates の候補は rescore の順ではなく一次スコア�
 test("reranker が例外を投げると、reranker が無いときと同じ順位に戻り、log に rerank failed を含むメッセージが 1 回渡る", async () => {
   const cfg = makeCfg({ candidates: 2, decayFloor: 0.1 });
   const { os } = fakeOs([
-    { score: 10, id: "m1", content: "m1 body", created_at: daysAgo(1000) },
+    { score: 10, id: "m1", content: "m1 body", created_at: daysAgo(10_000) },
     { score: 9, id: "m2", content: "m2 body", created_at: now.toISOString() },
     { score: 3, id: "m3", content: "m3 body", created_at: now.toISOString() },
   ]);
@@ -209,4 +215,64 @@ test("limit が candidates より小さくても、候補全部をリランク�
   assert.equal(results.length, 2);
   assert.deepEqual(results.map((r) => r.id), ["m2", "m3"]);
   assert.deepEqual(results.map((r) => r.rerank_score), [0.9, 0.5]);
+});
+
+const freshnessRows = (): Row[] => [
+  { score: 5, id: "old", content: "old body", title: "Old", created_at: daysAgo(200), provenance: "agent_verified" },
+  {
+    score: 4,
+    id: "new",
+    content: "new body",
+    title: "New",
+    created_at: daysAgo(10),
+    last_accessed_at: daysAgo(3),
+    provenance: "agent_verified",
+  },
+];
+
+test("reranker が無いとき: 各結果に freshness が付き、作成日が古いヒットは stale true、既存のフィールドは変わらない", async () => {
+  const cfg = makeCfg();
+  const { os } = fakeOs(freshnessRows());
+  const results = await searchMemories(cfg, { os, embedder }, { query: "q" }, now);
+
+  assert.deepEqual(results.map((r) => r.id), ["old", "new"]);
+  const [oldR, newR] = results;
+  assert.deepEqual(oldR!.freshness, { age_days: 200, idle_days: 200, last_accessed_at: null, stale: true });
+  assert.deepEqual(newR!.freshness, { age_days: 10, idle_days: 3, last_accessed_at: daysAgo(3), stale: false });
+  const { freshness: _f, ...rest } = oldR!;
+  assert.deepEqual(rest, {
+    id: "old",
+    title: "Old",
+    excerpt: "old body",
+    score: 5 * 0.85,
+    scope: "global",
+    kind: "semantic",
+    provenance: "agent_verified",
+    created_at: daysAgo(200),
+  });
+});
+
+test("reranker があるとき: リランクした結果とその外の結果のどちらにも freshness が付き、既存のフィールドは変わらない", async () => {
+  const cfg = makeCfg({ candidates: 1 });
+  const { os } = fakeOs(freshnessRows());
+  const fake = fakeReranker([0.8]);
+  const results = await searchMemories(cfg, { os, embedder, reranker: fake.reranker }, { query: "q" }, now);
+
+  assert.deepEqual(results.map((r) => r.id), ["old", "new"]);
+  const [oldR, newR] = results;
+  assert.deepEqual(oldR!.freshness, { age_days: 200, idle_days: 200, last_accessed_at: null, stale: true });
+  assert.deepEqual(newR!.freshness, { age_days: 10, idle_days: 3, last_accessed_at: daysAgo(3), stale: false });
+  const { freshness: _f, ...rest } = oldR!;
+  assert.deepEqual(rest, {
+    id: "old",
+    title: "Old",
+    excerpt: "old body",
+    score: 5 * 0.85,
+    scope: "global",
+    kind: "semantic",
+    provenance: "agent_verified",
+    created_at: daysAgo(200),
+    rerank_score: 0.8,
+  });
+  assert.equal("rerank_score" in newR!, false);
 });

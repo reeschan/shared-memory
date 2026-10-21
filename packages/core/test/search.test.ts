@@ -14,7 +14,7 @@ function rescoreCfg(decay_floor: number, access_weight: number): Config {
     ...cfg,
     search: {
       ...cfg.search,
-      half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 },
+      half_life_days: 90,
       provenance_factor: { human_confirmed: 1, agent_verified: 0.85, agent_inferred: 0.7 },
       rescore: { decay_floor, access_weight },
     },
@@ -63,13 +63,12 @@ test("(c) rescore: 経過 0 日・access 0・human_confirmed ならハイブリ�
   assert.equal(f, 0.73);
 });
 
-test("(d) rescore: 経過日数 = half_life で減衰は 0.7 + 0.3 × 0.5 = 0.85 倍 (tier ごと、last_accessed_at 優先)", () => {
-  for (const tier of ["hot", "warm"] as const) {
-    const hl = soft.search.half_life_days[tier];
+test("(d) rescore: 経過日数 = half_life で減衰は 0.7 + 0.3 × 0.5 = 0.85 倍 (tier によらず、last_accessed_at 優先)", () => {
+  const hl = soft.search.half_life_days;
+  for (const tier of ["hot", "warm", "cold", "archive"] as const) {
     const s = rescore(1, { created_at: daysAgo(hl), tier, provenance: "human_confirmed" }, soft, now);
     near(s, 0.85);
   }
-  const hl = soft.search.half_life_days.hot;
   const s = rescore(
     1,
     { created_at: daysAgo(1000), last_accessed_at: daysAgo(hl), tier: "hot", provenance: "human_confirmed" },
@@ -77,6 +76,26 @@ test("(d) rescore: 経過日数 = half_life で減衰は 0.7 + 0.3 × 0.5 = 0.85
     now,
   );
   near(s, 0.85);
+});
+
+test("(d2) rescore: 同じ経過日数なら tier が違っても同じスコア", () => {
+  for (const d of [0, 6, 7, 8, 29, 31, 181, 400]) {
+    const scores = (["hot", "warm", "cold", "archive"] as const).map((tier) =>
+      rescore(0.9, { created_at: daysAgo(d), access_count: 3, tier, provenance: "agent_verified" }, soft, now),
+    );
+    for (const s of scores) assert.equal(s, scores[0], `${d} 日: ${scores}`);
+  }
+});
+
+test("(d3) rescore: 経過日数が増えるとスコアは狭義に単調減少 (tier が変わる日をまたいでも)", () => {
+  // runDecay の既定 (warm 7 日・cold 30 日) で tier が変わる前後の日数。tier も実際に合わせて変える
+  const points: [number, "hot" | "warm" | "cold" | "archive"][] = [
+    [6, "hot"], [7, "warm"], [8, "warm"], [29, "warm"], [31, "cold"], [179, "cold"], [181, "archive"],
+  ];
+  const scores = points.map(([d, tier]) =>
+    rescore(1, { created_at: daysAgo(d), tier, provenance: "human_confirmed" }, soft, now),
+  );
+  for (let i = 1; i < scores.length; i++) assert.ok(scores[i]! < scores[i - 1]!, String(scores));
 });
 
 test("(e) rescore: 減衰が 0 に近い古いメモリでも、減衰の係数は下限 0.7 で止まる", () => {
