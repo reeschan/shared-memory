@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync } from "node:fs";
+import { appendFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EvalLabel, EvalQuestion } from "../src/evalset.ts";
@@ -367,4 +368,16 @@ test("appendHistory したものを readHistory で同じ順に読める。無�
   const back = await readHistory(dir);
   assert.deepEqual(back, [r1, r2]);
   assert.equal(back[1]!.guard.alert, true);
+});
+
+test("readHistory は guard などの欄が無い行を、行番号と欄の名前入りの Error にする", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "sm-eval-"));
+  const s = worseSetup();
+  const r1 = (await runEvaluation(base({ ...s, now: new Date("2026-10-20T00:00:00.000Z") }))).run;
+  await appendHistory(dir, r1);
+  const { guard: _guard, ...noGuard } = r1;
+  await appendFile(join(dir, HISTORY_FILE), JSON.stringify(noGuard) + "\n");
+  await assert.rejects(readHistory(dir), /2 行目に guard がありません/);
+  await writeFile(join(dir, HISTORY_FILE), "[1, 2]\n");
+  await assert.rejects(readHistory(dir), /1 行目に 実行の記録/);
 });

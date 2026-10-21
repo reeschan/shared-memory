@@ -1,6 +1,6 @@
 import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { addHumanLabels, questionKey, readEvalSet, writeEvalSet } from "./evalset.ts";
 import type { EvalFilters, EvalQuestion } from "./evalset.ts";
 import type { Provenance } from "./frontmatter.ts";
@@ -78,7 +78,8 @@ function sessionFile(dir: string, id: string): string {
 async function writeSession(dir: string, s: FeedbackSession): Promise<void> {
   await mkdir(join(dir, SESSIONS_DIR), { recursive: true });
   const file = sessionFile(dir, s.id);
-  const tmp = `${file}.tmp`;
+  // 同じセッションを並んで書いても一時ファイルがぶつからないように、名前に乱数を入れる
+  const tmp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
   await writeFile(tmp, JSON.stringify(s, null, 2) + "\n", "utf8");
   await rename(tmp, file);
 }
@@ -298,14 +299,37 @@ function cleanDraft(s: FeedbackSession, draft: Draft): Draft {
   return out;
 }
 
+/** 評価のディレクトリ → そこへの読み書きの列の末尾 */
+const writeQueues = new Map<string, Promise<unknown>>();
+
+/**
+ * 同じ評価のディレクトリへの読み書き (下書きの保存と確定) を、このプロセスの中で 1 つずつ流す。
+ * 確定のあとに古い下書きの保存がセッションを open に戻したり、2 つの確定が評価セットの
+ * ラベルを取りこぼしたりしないようにする。画面の道はすべて MCP サーバーの 1 プロセスで動く
+ */
+function serialized<T>(dir: string, fn: () => Promise<T>): Promise<T> {
+  const key = resolve(dir);
+  const prev = writeQueues.get(key) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  const tail = next.catch(() => undefined);
+  writeQueues.set(key, tail);
+  // 列が空になったら消す (長く動くサーバーで Map が育たないように)
+  void tail.then(() => {
+    if (writeQueues.get(key) === tail) writeQueues.delete(key);
+  });
+  return next;
+}
+
 /** 下書きを保存する */
-export async function saveDraft(dir: string, id: string, token: string, draft: Draft): Promise<SessionOpResult> {
-  const r = await openForWrite(dir, id, token);
-  if ("result" in r) return r.result;
-  const s = r.session;
-  s.draft = cleanDraft(s, draft);
-  await writeSession(dir, s);
-  return { status: "ok" };
+export function saveDraft(dir: string, id: string, token: string, draft: Draft): Promise<SessionOpResult> {
+  return serialized(dir, async () => {
+    const r = await openForWrite(dir, id, token);
+    if ("result" in r) return r.result;
+    const s = r.session;
+    s.draft = cleanDraft(s, draft);
+    await writeSession(dir, s);
+    return { status: "ok" };
+  });
 }
 
 function hasJudgment(e: DraftEntry | undefined): e is DraftEntry {
@@ -316,7 +340,11 @@ function hasJudgment(e: DraftEntry | undefined): e is DraftEntry {
  * 確定する。判定のある問いだけ評価セットに人のラベルを書き (relevant は等級 1 以上)、
  * outcomes に勝ち負けを記録する (上位 10 件が同じ問いは "tie")。written は書いた問いの数
  */
-export async function confirmSession(dir: string, id: string, token: string, draft?: Draft): Promise<SessionOpResult> {
+export function confirmSession(dir: string, id: string, token: string, draft?: Draft): Promise<SessionOpResult> {
+  return serialized(dir, () => confirmNow(dir, id, token, draft));
+}
+
+async function confirmNow(dir: string, id: string, token: string, draft?: Draft): Promise<SessionOpResult> {
   const r = await openForWrite(dir, id, token);
   if ("result" in r) return r.result;
   const s = r.session;

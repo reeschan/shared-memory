@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readEvalSet, writeEvalSet, type EvalQuestion } from "../src/evalset.ts";
@@ -344,4 +344,38 @@ test("interleaveTotals は確定したセッションだけを数える", async 
   // fb-test-3 は open のまま (下書きだけ)
   await saveDraft(dir, "fb-test-3", "secret-token", { [it.qid]: { grades: { [aIds[0]!]: 2 }, stale_ids: [] } });
   assert.deepEqual(await interleaveTotals(dir), { wins: 1, losses: 2, ties: 1, sessions: 2 });
+});
+
+test("下書きの保存と確定は 1 つずつ流れ、確定のあとに古い下書きの保存がセッションを open に戻さない。同時の確定は 1 回だけ通る", async () => {
+  const dir = tmp();
+  const { s } = await make(dir);
+  const qid = s.items[0]!.qid;
+  const draft = { [qid]: { grades: { "m-a1": 2 as const }, stale_ids: [] } };
+  // 確定の直前に送られた下書きの保存と、確定と、確定のあとに届いた下書きの保存を同時に走らせる
+  const results = await Promise.all([
+    saveDraft(dir, "fb-test-1", "secret-token", draft),
+    confirmSession(dir, "fb-test-1", "secret-token", draft),
+    saveDraft(dir, "fb-test-1", "secret-token", {}),
+    confirmSession(dir, "fb-test-1", "secret-token", draft),
+  ]);
+  assert.deepEqual(results.map((r) => r.status), ["ok", "ok", "closed", "closed"]);
+  const back = (await loadSession(dir, "fb-test-1"))!;
+  assert.equal(back.status, "confirmed");
+  assert.ok(back.outcomes !== undefined && Object.keys(back.outcomes).length === 1);
+  // 人のラベルは 1 回だけ書かれる
+  const labels = (await readEvalSet(dir)).flatMap((q) => q.labels.filter((l) => l.source === "human"));
+  assert.equal(labels.length, 1);
+  // 一時ファイルは残らない
+  assert.deepEqual(readdirSync(join(dir, SESSIONS_DIR)).filter((f) => f.endsWith(".tmp")), []);
+});
+
+test("同じセッションへの下書きの保存を並べても失敗しない (一時ファイルがぶつからない)", async () => {
+  const dir = tmp();
+  const { s } = await make(dir);
+  const qid = s.items[0]!.qid;
+  const saves = Array.from({ length: 8 }, (_, i) =>
+    saveDraft(dir, "fb-test-1", "secret-token", { [qid]: { grades: { "m-a1": (i % 3) as 0 | 1 | 2 }, stale_ids: [] } }),
+  );
+  assert.ok((await Promise.all(saves)).every((r) => r.status === "ok"));
+  assert.equal((await loadSession(dir, "fb-test-1"))!.draft[qid]!.grades["m-a1"], 7 % 3);
 });

@@ -115,8 +115,9 @@ $Tasks = @(
         TriggerText = '毎週日曜 10:00'
         Trigger     = { New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At '10:00' }
         # 2 つのコマンドの出力をどちらもログに送るため、スクリプトブロックにまとめる。
-        # feedback --notify は通知できたときは URL (合言葉入り) を出さない
-        Command     = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { & $nodeLit $cliLit eval --notify; & $nodeLit $cliLit feedback --notify }"
+        # feedback --notify は通知できたときは URL (合言葉入り) を出さない。
+        # eval が失敗したら (feedback が成功しても) その終了コードでタスクを失敗にする
+        Command     = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { & $nodeLit $cliLit eval --notify; `$evalCode = `$LASTEXITCODE; & $nodeLit $cliLit feedback --notify; if (`$evalCode -ne 0) { cmd /c exit `$evalCode } }"
         TimeLimit   = (New-TimeSpan -Hours 1)
     }
 )

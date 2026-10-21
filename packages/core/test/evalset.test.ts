@@ -170,3 +170,12 @@ test("evalDir は eval.dir が空なら memories_dir の隣の eval/、空でな
   const custom = join(tmpdir(), "elsewhere", "ev");
   assert.equal(evalDir({ ...base, eval: { dir: custom } }), custom);
 });
+
+test("readEvalSet は日時として読めない asked_at と、数でない relevant の値を行番号入りの Error にする", async () => {
+  const dir = tmp();
+  writeFileSync(join(dir, EVAL_SET_FILE), `${JSON.stringify(q())}\n${JSON.stringify(q({ qid: "s02", asked_at: "きのう" }))}\n`);
+  await assert.rejects(readEvalSet(dir), /2 行目.*asked_at が日時として読めません/);
+  const badGrade = q({ qid: "s03", labels: [{ source: "agent", labeled_at: "2026-01-01T00:00:00.000Z", relevant: { DUMMY1: "2" as unknown as number } }] });
+  writeFileSync(join(dir, EVAL_SET_FILE), `${JSON.stringify(q())}\n\n${JSON.stringify(badGrade)}\n`);
+  await assert.rejects(readEvalSet(dir), /3 行目.*relevant の値は数/);
+});

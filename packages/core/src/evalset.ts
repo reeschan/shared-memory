@@ -47,6 +47,7 @@ function checkQuestion(v: unknown): string | undefined {
   if (typeof v.qid !== "string" || v.qid === "") return "qid がありません";
   if (typeof v.query !== "string") return "query がありません";
   if (typeof v.asked_at !== "string") return "asked_at がありません";
+  if (Number.isNaN(Date.parse(v.asked_at))) return "asked_at が日時として読めません";
   if (v.kind !== "synthetic" && v.kind !== "real") return "kind は synthetic か real にしてください";
   if (!Array.isArray(v.labels)) return "labels が配列ではありません";
   for (const l of v.labels) {
@@ -54,6 +55,9 @@ function checkQuestion(v: unknown): string | undefined {
     if (l.source !== "agent" && l.source !== "human") return "labels[].source は agent か human にしてください";
     if (typeof l.labeled_at !== "string") return "labels[].labeled_at がありません";
     if (!isObj(l.relevant)) return "labels[].relevant がマップではありません";
+    if (!Object.values(l.relevant).every((g) => typeof g === "number" && Number.isFinite(g))) {
+      return "labels[].relevant の値は数にしてください";
+    }
   }
   return undefined;
 }

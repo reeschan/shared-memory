@@ -282,6 +282,16 @@ export async function runEvaluation(input: {
   return { run, perQuestion };
 }
 
+/** 履歴の 1 行で、読む側 (ガードの判定・画面) が使うオブジェクトの欄のうち、無いものの名前 */
+function missingRunField(v: unknown): string | undefined {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return "実行の記録 (オブジェクト)";
+  const r = v as Record<string, unknown>;
+  for (const k of ["production", "primary", "diff", "guard", "interleave"]) {
+    if (typeof r[k] !== "object" || r[k] === null) return k;
+  }
+  return undefined;
+}
+
 /** `<dir>/history.jsonl` を古い順に読む。無ければ []。空行は無視し、壊れた行は行番号入りの Error */
 export async function readHistory(dir: string): Promise<EvalRun[]> {
   const file = join(dir, HISTORY_FILE);
@@ -297,11 +307,15 @@ export async function readHistory(dir: string): Promise<EvalRun[]> {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!.trim();
     if (line === "") continue;
+    let v: unknown;
     try {
-      out.push(JSON.parse(line) as EvalRun);
+      v = JSON.parse(line);
     } catch (e) {
       throw new Error(`${file}: ${i + 1} 行目が JSON として読めません (${(e as Error).message})`);
     }
+    const missing = missingRunField(v);
+    if (missing !== undefined) throw new Error(`${file}: ${i + 1} 行目に ${missing} がありません`);
+    out.push(v as EvalRun);
   }
   return out;
 }
