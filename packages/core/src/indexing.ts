@@ -3,7 +3,12 @@ import path from "node:path";
 import type { Config } from "./config.ts";
 import { parseMemoryFile, type Memory, type Tier } from "./frontmatter.ts";
 import { chunkMemory, contentHash } from "./chunk.ts";
-import type { Embedder } from "./embed.ts";
+import {
+  embeddingFingerprint,
+  fingerprintParts,
+  LEGACY_EMBEDDING,
+  type Embedder,
+} from "./embed.ts";
 import type { OpenSearchClient } from "./opensearch.ts";
 import type { StatsStore } from "./stats.ts";
 
@@ -79,8 +84,57 @@ async function putPipeline(cfg: Config, os: OpenSearchClient): Promise<void> {
   await os.putSearchPipeline(cfg.opensearch.pipeline_name, body);
 }
 
+type IndexTemplate = {
+  mappings?: {
+    properties?: { embedding?: { dimension?: number } };
+    _meta?: Record<string, unknown>;
+  };
+};
+
 async function readTemplate(cfg: Config): Promise<object> {
-  return JSON.parse(await readFile(cfg.opensearch.template_file, "utf8")) as object;
+  const tpl = JSON.parse(await readFile(cfg.opensearch.template_file, "utf8")) as IndexTemplate;
+  const mappings = (tpl.mappings ??= {});
+  const properties = (mappings.properties ??= {});
+  const embedding = (properties.embedding ??= {});
+  // テンプレートの 1024 は残したまま、作るときに設定の次元を差し込む
+  embedding.dimension = cfg.embedding.dimension;
+  // 指紋とその内訳を _meta に書き、index の前に設定と照合できるようにする
+  mappings._meta = {
+    ...(mappings._meta ?? {}),
+    embedding: {
+      fingerprint: embeddingFingerprint(cfg.embedding),
+      parts: fingerprintParts(cfg.embedding),
+    },
+  };
+  return tpl;
+}
+
+/**
+ * エイリアスの先のインデックスに書かれた埋め込みの指紋を、設定と照合する。
+ * エイリアスの先が無ければ ok。`_meta` に指紋が無い既存のインデックスは LEGACY_EMBEDDING とみなす。
+ */
+export async function checkEmbeddingCompat(
+  cfg: Config,
+  os: OpenSearchClient,
+): Promise<{ ok: boolean; index: string; indexFingerprint: string; expected: string }> {
+  const expected = embeddingFingerprint(cfg.embedding);
+  const targets = await os.getAliasTargets(cfg.opensearch.alias);
+  if (targets.length === 0) {
+    return { ok: true, index: cfg.opensearch.alias, indexFingerprint: expected, expected };
+  }
+  const legacy = embeddingFingerprint(LEGACY_EMBEDDING);
+  let last: { index: string; indexFingerprint: string } | undefined;
+  for (const index of targets) {
+    const meta = await os.getIndexMeta(index);
+    const raw = meta?.embedding;
+    const fp =
+      typeof raw === "object" && raw !== null && typeof (raw as { fingerprint?: unknown }).fingerprint === "string"
+        ? (raw as { fingerprint: string }).fingerprint
+        : legacy;
+    last = { index, indexFingerprint: fp };
+    if (fp !== expected) return { ok: false, ...last, expected };
+  }
+  return { ok: true, ...last!, expected };
 }
 
 export async function ensureSetup(
@@ -137,6 +191,18 @@ export async function indexIncremental(
 ): Promise<IndexReport> {
   const target = opts.index ?? cfg.opensearch.alias;
   const { os, embedder, stats } = deps;
+
+  // 0. 書き込み先を明示されていない (= エイリアスへ書く) ときは、埋め込みの指紋を照合する
+  if (opts.index === undefined) {
+    const compat = await checkEmbeddingCompat(cfg, os);
+    if (!compat.ok) {
+      throw new Error(
+        `埋め込みの設定がインデックス ${compat.index} と違います ` +
+          `(インデックス ${compat.indexFingerprint}、設定 ${compat.expected})。` +
+          `pnpm sm reindex で作り直してください`,
+      );
+    }
+  }
 
   // 1. 全件走査
   const { memories, invalid } = await scanMemories(cfg);

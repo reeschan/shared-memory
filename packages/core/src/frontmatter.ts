@@ -21,6 +21,8 @@ export type MemoryMeta = {
   supersedes?: string;
   symbol_ref?: string;
   tags?: string[];
+  source_path?: string;
+  source_sha256?: string;
 };
 
 export type Memory = MemoryMeta & { body: string; path: string };
@@ -87,6 +89,15 @@ export function validateMeta(meta: unknown): string[] {
       errors.push("tags は文字列の配列にしてください");
     }
   }
+  if (
+    m.source_path !== undefined &&
+    !(typeof m.source_path === "string" && m.source_path !== "" && m.source_path.length <= 1000)
+  ) {
+    errors.push("source_path は空でない 1000 字以内の文字列にしてください");
+  }
+  if (m.source_sha256 !== undefined && !(typeof m.source_sha256 === "string" && /^[0-9a-f]{64}$/.test(m.source_sha256))) {
+    errors.push("source_sha256 は 64 桁の小文字 16 進にしてください");
+  }
   return errors;
 }
 
@@ -135,7 +146,7 @@ export function serializeMemory(meta: MemoryMeta, body: string): string {
   const ordered: Record<string, unknown> = {};
   for (const k of [
     "id", "title", "scope", "kind", "provenance", "source_agent",
-    "created_at", "supersedes", "symbol_ref", "tags",
+    "created_at", "supersedes", "symbol_ref", "tags", "source_path", "source_sha256",
   ] as const) {
     if (meta[k] !== undefined) ordered[k] = meta[k];
   }

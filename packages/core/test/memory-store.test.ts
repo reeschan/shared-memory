@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ulid } from "ulid";
 import { prepareMemory, type WriteInput } from "../src/memory-store.ts";
+import { serializeMemory } from "../src/frontmatter.ts";
 
 const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 const now = new Date("2026-10-10T01:02:03.456Z");
@@ -79,6 +80,24 @@ test("(e) 空の content でエラー", () => {
     const errors = errorsOf(prepareMemory(input({ content }), { now, existingIds: new Set() }));
     assert.ok(errors.some((e) => e.includes("content")), errors.join("; "));
   }
+});
+
+test("(f) 出典付きの WriteInput から front matter の source_path / source_sha256 が入る", () => {
+  const sha = "a".repeat(64);
+  const r = prepareMemory(input({ source_path: "docs/specs/pluggable-embedding-and-rerank.md", source_sha256: sha }), {
+    now,
+    existingIds: new Set(),
+  });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.equal(r.meta.source_path, "docs/specs/pluggable-embedding-and-rerank.md");
+  assert.equal(r.meta.source_sha256, sha);
+  const text = serializeMemory(r.meta, r.body);
+  assert.match(text, /^source_path: docs\/specs\/pluggable-embedding-and-rerank\.md$/m);
+  assert.match(text, new RegExp(`^source_sha256: ${sha}$`, "m"));
+  const without = prepareMemory(input(), { now, existingIds: new Set() });
+  assert.ok(without.ok);
+  assert.equal(without.meta.source_path, undefined);
+  assert.equal(without.meta.source_sha256, undefined);
 });
 
 test("必須フィールドの欠落と不正な scope でエラー", () => {

@@ -3,7 +3,35 @@
 
 # 知識 (Markdown) の保存先。Google Drive / OneDrive / Proton Drive などの同期フォルダや、
 # private の Git リポジトリの中を絶対パスで指す。フォルダ名は memories にする
+
+# Windows
 memories_dir: 'C:\Users\<you>\Proton Drive\<account>\My files\AI\knowledge-base\memories'
+
+# macOS
+# memories_dir: '/Users/<you>/Library/CloudStorage/GoogleDrive-<account>/My Drive/AI/knowledge-base/memories'
+
+# Linux
+# memories_dir: '/home/<you>/knowledge-base/memories'
 
 # 統計の SQLite は同期フォルダに置かない (同時書き込みで壊れたり競合ファイルができたりする)
 # state_db: state/stats.sqlite
+
+# 埋め込みモデルの切り替え (省略時は config.yaml の Ollama + Qwen3-Embedding-0.6B)
+# 旧キー embedding.query_instruction は embedding.query.prefix として読む (config.yaml の値より優先)。
+# 新しく書くときは embedding.query.prefix を使う。
+# 値の詳細と例は README の「埋め込みモデルの切り替え」を参照。
+# embedding:
+#   provider: openai                 # ollama (既定) / openai (OpenAI 互換)
+#   url: http://127.0.0.1:1234/v1    # LM Studio / vLLM / llama.cpp / TEI など
+#   model: text-embedding-nomic-embed-text-v1.5
+#   dimension: 768
+#   # api_key_env: EMBEDDING_API_KEY  # 値は .env か環境変数に書く
+
+# リランクの切り替え (省略時は無効)
+#   flavor: cohere | voyage | tei | sarashina
+# ローカルの TEI は `docker compose --profile rerank up -d` で起動する。
+# rerank:
+#   enabled: true
+#   flavor: tei
+#   url: http://127.0.0.1:8081
+#   model: BAAI/bge-reranker-v2-m3

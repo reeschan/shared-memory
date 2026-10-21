@@ -1,8 +1,9 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { OpenSearchClient } from "../src/opensearch.ts";
+import { loadConfig } from "../src/config.ts";
 
-const os = new OpenSearchClient("http://127.0.0.1:9200");
+const os = new OpenSearchClient(loadConfig().opensearch.url);
 const P = "test-pbi006-";
 const created: string[] = [];
 

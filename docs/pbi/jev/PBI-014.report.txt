@@ -1,7 +1,0 @@
-検証コマンドの出力:
-1. import.test.ts → # tests 6 / # pass 6 / # fail 0
-2. import.int.test.ts → # tests 4 / # pass 4 / # fail 0
-3. pnpm typecheck → exit=0
-4. pnpm sm → 使い方に import を含む、exit=1
-変更箇所: packages/core/src/import.ts 1-117, packages/indexer/src/cli.ts 1,14-37,101-150,196-232, test/import.test.ts (新規), test/import.int.test.ts (新規)
-自己判定: 条件1〜6 すべて pass

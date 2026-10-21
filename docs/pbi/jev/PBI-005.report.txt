@@ -1,6 +1,0 @@
-検証コマンドの出力:
-1. node --test embed.test.ts → # tests 5 / # pass 5 / # fail 0
-2. node --test embed.int.test.ts → # tests 1 / # pass 1 / # fail 0
-3. pnpm typecheck → EXIT 0
-変更箇所: packages/core/src/embed.ts 1-88, packages/core/test/embed.test.ts (新規), packages/core/test/embed.int.test.ts (新規)
-自己判定: 条件1〜5 すべて pass

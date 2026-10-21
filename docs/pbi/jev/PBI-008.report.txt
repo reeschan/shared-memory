@@ -1,6 +1,0 @@
-検証コマンドの出力:
-1. node --test indexing.int.test.ts → # tests 10 / # pass 10 / # fail 0
-2. pnpm typecheck → exit=0
-3. _cat/indices → .plugins-ml-config, top_queries-... (test- なし)
-変更箇所: packages/core/src/indexing.ts (全面), packages/core/test/int-helpers.ts (新規), packages/core/test/indexing.int.test.ts (新規)
-自己判定: 条件1〜3 pass, 条件4 (a)〜(i) すべて pass

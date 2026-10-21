@@ -2,9 +2,11 @@ import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import {
   loadConfig,
-  Embedder,
+  createEmbedder,
+  createReranker,
   OpenSearchClient,
   StatsStore,
+  checkEmbeddingCompat,
   ensureSetup,
   indexIncremental,
   reindexAll,
@@ -153,11 +155,27 @@ const COMMANDS: Record<string, Command> = {
     run: async (cfg, deps, args) => {
       const query = args.positionals.join(" ").trim();
       if (query === "") throw new UsageError("検索語を指定してください");
-      const results = await searchMemories(cfg, { os: deps.os, embedder: deps.embedder }, {
-        query,
-        scope: args.scope,
-        limit: args.limit,
-      });
+      // 検索は指紋の不一致でも止めず、警告だけにする
+      try {
+        const compat = await checkEmbeddingCompat(cfg, deps.os);
+        if (!compat.ok) {
+          console.error(
+            `警告: インデックス ${compat.index} の埋め込みの指紋 (${compat.indexFingerprint}) が設定 (${compat.expected}) と一致しません。pnpm sm reindex を実行してください`,
+          );
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`警告: 埋め込みの指紋を確認できませんでした: ${msg}`);
+      }
+      const results = await searchMemories(
+        cfg,
+        { os: deps.os, embedder: deps.embedder, reranker: createReranker(cfg.rerank), log: (msg) => console.error(msg) },
+        {
+          query,
+          scope: args.scope,
+          limit: args.limit,
+        },
+      );
       const text =
         results.length === 0
           ? "該当なし"
@@ -226,7 +244,7 @@ async function main(argv: string[]): Promise<number> {
     stats = new StatsStore(cfg.state_db);
     const deps: Deps = {
       os: new OpenSearchClient(cfg.opensearch.url),
-      embedder: new Embedder(cfg.embedding, cfg.cache_dir),
+      embedder: createEmbedder(cfg.embedding, cfg.cache_dir),
       stats,
     };
     return (await command.run(cfg, deps, args)) ?? 0;

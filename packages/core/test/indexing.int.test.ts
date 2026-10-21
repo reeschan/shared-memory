@@ -1,11 +1,12 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { rm, writeFile } from "node:fs/promises";
+import { rm, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ulid } from "ulid";
 import type { MemoryMeta } from "../src/frontmatter.ts";
 import { chunkMemory } from "../src/chunk.ts";
-import { ensureSetup, indexIncremental, reindexAll } from "../src/indexing.ts";
+import { embeddingFingerprint, fingerprintParts, LEGACY_EMBEDDING } from "../src/embed.ts";
+import { checkEmbeddingCompat, ensureSetup, indexIncremental, reindexAll } from "../src/indexing.ts";
 import { makeTestEnv, type TestEnv } from "./int-helpers.ts";
 
 let env: TestEnv;
@@ -209,4 +210,102 @@ test("only 指定: 対象ファイルだけ投入し、他ファイルの削除�
   assert.equal(r.upserted, 1);
   assert.equal(r.deleted, 0);
   assert.equal((await docsOf(E.id)).length, 1);
+});
+
+test("(j) ensureSetup は _meta に指紋と内訳を書き、テンプレートの次元を設定値にする", async () => {
+  const e = await makeTestEnv("pbi024meta");
+  try {
+    await ensureSetup(e.cfg, e.deps.os);
+    const index = (await e.deps.os.getAliasTargets(e.cfg.opensearch.alias))[0]!;
+    assert.equal(index, e.cfg.opensearch.index_base);
+    const indexMeta = await e.deps.os.getIndexMeta(index);
+    assert.ok(indexMeta, "_meta がある");
+    const emb = indexMeta.embedding as { fingerprint: string; parts: Record<string, unknown> };
+    const expected = embeddingFingerprint(e.cfg.embedding);
+    assert.equal(emb.fingerprint, expected);
+    assert.deepEqual(emb.parts, fingerprintParts(e.cfg.embedding));
+    const mapping = await e.deps.os.request<any>("GET", `/${index}/_mapping`);
+    assert.equal(mapping[index].mappings.properties.embedding.dimension, e.cfg.embedding.dimension);
+    assert.deepEqual(await checkEmbeddingCompat(e.cfg, e.deps.os), {
+      ok: true,
+      index,
+      indexFingerprint: expected,
+      expected,
+    });
+  } finally {
+    await e.cleanup();
+  }
+});
+
+test("(k) revision が違うと indexIncremental は止まり、reindexAll は新しい指紋のインデックスを作る", async () => {
+  const e = await makeTestEnv("pbi024rev");
+  try {
+    await ensureSetup(e.cfg, e.deps.os);
+    const M = meta("メモリ: 埋め込みの照合");
+    await e.writeMemoryFile(M, "照合用の短い本文。");
+    const current = embeddingFingerprint(e.cfg.embedding);
+    const changed = structuredClone(e.cfg);
+    changed.embedding.revision = e.cfg.embedding.revision + 1;
+    const expected = embeddingFingerprint(changed.embedding);
+    assert.notEqual(expected, current);
+
+    await assert.rejects(
+      () => indexIncremental(changed, e.deps),
+      (err: Error) => {
+        assert.match(err.message, /pnpm sm reindex/);
+        assert.ok(err.message.includes(`インデックス ${current}`), err.message);
+        assert.ok(err.message.includes(`設定 ${expected}`), err.message);
+        return true;
+      },
+    );
+    const afterFail = await e.deps.os.request<{ count: number }>(
+      "GET",
+      `/${e.cfg.opensearch.alias}/_count`,
+    );
+    assert.equal(afterFail.count, 0, "照合で止まったときはドキュメントを書かない");
+
+    const body = "照合用の短い本文。";
+    const r = await reindexAll(changed, e.deps);
+    assert.deepEqual(await e.deps.os.getAliasTargets(e.cfg.opensearch.alias), [r.index]);
+    const indexMeta = await e.deps.os.getIndexMeta(r.index);
+    const emb = indexMeta?.embedding as { fingerprint: string; parts: Record<string, unknown> };
+    assert.equal(emb.fingerprint, expected);
+    assert.equal(emb.parts.dimension, changed.embedding.dimension);
+    assert.equal(r.upserted, chunkMemory(M.title, body, e.cfg.chunk).length);
+    const afterReindex = await e.deps.os.request<{ count: number }>("GET", `/${r.index}/_count`);
+    assert.equal(afterReindex.count, r.upserted);
+  } finally {
+    await e.cleanup();
+  }
+});
+
+test("(m) _meta の無いインデックスは LEGACY_EMBEDDING の指紋とみなす", async () => {
+  const e = await makeTestEnv("pbi024legacy");
+  try {
+    const legacy = embeddingFingerprint(LEGACY_EMBEDDING);
+    assert.equal(embeddingFingerprint(e.cfg.embedding), legacy, "cfg は旧来の既定と同じ指紋");
+    const template = JSON.parse(await readFile(e.cfg.opensearch.template_file, "utf8"));
+    delete template.mappings._meta;
+    const index = `${e.prefix}-legacy`;
+    await e.deps.os.createIndex(index, template);
+    await e.deps.os.swapAlias(e.cfg.opensearch.alias, index, []);
+    assert.equal(await e.deps.os.getIndexMeta(index), undefined);
+
+    assert.deepEqual(await checkEmbeddingCompat(e.cfg, e.deps.os), {
+      ok: true,
+      index,
+      indexFingerprint: legacy,
+      expected: legacy,
+    });
+
+    const changed = structuredClone(e.cfg);
+    changed.embedding.revision = e.cfg.embedding.revision + 1;
+    const bad = await checkEmbeddingCompat(changed, e.deps.os);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.index, index);
+    assert.equal(bad.indexFingerprint, legacy);
+    assert.equal(bad.expected, embeddingFingerprint(changed.embedding));
+  } finally {
+    await e.cleanup();
+  }
 });

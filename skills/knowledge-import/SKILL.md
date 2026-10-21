@@ -7,7 +7,7 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 
 複数のメモリをまとめて shared-memory に入れる。1 件ずつ MCP の `write` を呼ぶと毎回インデックスが走って遅いため、CLI の `import` コマンドで一括登録する。Skill の役割は、入力を分割・分類して候補を作り、人の確認を挟むこと。
 
-- **リポジトリルート** (以下 `<ROOT>`): 環境変数 `SHARED_MEMORY_ROOT`、無ければ `C:\Users\owner\dev\shared-memory`。
+- **リポジトリルート** (以下 `<ROOT>`): 環境変数 `SHARED_MEMORY_ROOT`。Windows 以外では指定を必須とする。Windows で指定が無ければ `C:\Users\owner\dev\shared-memory`。
 - CLI: `pnpm --dir <ROOT> sm import <file> --dry-run` (検証のみ) → 承認後 `pnpm --dir <ROOT> sm import <file>`。
   - `pnpm --dir` で実行すると CLI の作業ディレクトリが `<ROOT>` になる。**JSONL は必ず絶対パスで渡す** (相対パスは `<ROOT>` 基準で解釈される)。
   - 必要なら `--source-agent <claude|codex|kimi|grok|human>` で、行に `source_agent` が無いときの既定値を指定できる。
@@ -40,19 +40,28 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 | `supersedes` | | 置き換える既存メモリの `id` (ULID)。存在しない id はエラー |
 | `symbol_ref` | | 関連するコードのシンボル (例 `src/auth/session.ts/refreshToken`) |
 | `tags` | | 文字列の配列 |
+| `source_path` | | 出典のファイルのパス (空でない 1000 字以内) |
+| `source_sha256` | | 出典のファイルの SHA-256 (64 桁の小文字 16 進) |
 
 例 (2 行):
 
 ```jsonl
-{"title":"OpenSearch のポートは 127.0.0.1 限定","content":"docker-compose のポート指定は 127.0.0.1:9200:9200 の形にする。セキュリティプラグインを無効にしているため、外部に公開しない。\n\n出典: docs/design/design.md","scope":"project:shared-memory","kind":"semantic","provenance":"agent_verified","source_agent":"claude","tags":["opensearch","security"]}
+{"title":"OpenSearch のポートは 127.0.0.1 限定","content":"docker-compose のポート指定は 127.0.0.1:9200:9200 の形にする。セキュリティプラグインを無効にしているため、外部に公開しない。\n\n出典: docs/design/design.md","scope":"project:shared-memory","kind":"semantic","provenance":"agent_verified","source_agent":"claude","tags":["opensearch","security"],"source_path":"docs/design/design.md","source_sha256":"<docs/design/design.md の SHA-256 (64 桁の小文字 16 進)>"}
 {"title":"埋め込みモデルを qwen3-embedding:0.6b に決定","content":"2026-10-10 の検討で、埋め込みは Ollama の qwen3-embedding:0.6b (1024 次元) を使うと決めた。モデルを変えるときはインデックス名を変えて全件を再埋め込みする。","scope":"global","kind":"episodic","source_agent":"claude","supersedes":"01JABCDEFGHJKMNPQRSTVWXYZ0","tags":["embedding","decision"]}
 ```
 
-(2 行目の `supersedes` は例。実際には `search` で見つけた既存メモリの `id` を入れる。)
+(1 行目はファイルからの取り込みなので `source_path` と `source_sha256` を付ける。`source_sha256` には下の「注意点」のコマンドで求めた値を入れる。2 行目は会話からの取り込みなので付けない。2 行目の `supersedes` は例。実際には `search` で見つけた既存メモリの `id` を入れる。)
 
 ## 注意点
 
 - `provenance` の既定は `agent_verified`。人が内容を 1 件ずつ確認したものだけ `human_confirmed` にする。推測で書いたものは `agent_inferred`。
+- ファイルから取り込むときは、`source_path` と `source_sha256` を必ず付ける。`source_path` には読み込んだファイルのパスを入れる。ハッシュは OS ごとに次で求める。
+  - Windows: `(Get-FileHash -Algorithm SHA256 <path>).Hash.ToLower()`
+  - macOS: `shasum -a 256 <path> | cut -d ' ' -f 1`
+  - Linux: `sha256sum <path> | cut -d ' ' -f 1`
+  - `shasum` と `sha256sum` はハッシュのあとにファイル名を出すので、先頭の 64 桁だけを使う
+- ファイルから取り込むときも、本文末尾の `出典: <パス>` は今までどおり残す。
+- 会話や貼り付けから取り込むときは、`source_path` と `source_sha256` を付けない。
 - 元の文書を丸ごと 1 メモリにしない。長い文書は要点ごとに分け、元ファイルのパスを本文末尾に残す (例 `出典: C:\path\to\file.md`)。
 - 秘密情報 (API キー、パスワード、トークンなど) は候補に入れない。秘密情報らしき文字列を含む行は `import` 側でも拒否される。
 - エラーが 1 件でもあると、dry-run でなくても何も書き込まれずに終了コード 1 になる。全行を直してから再実行する。

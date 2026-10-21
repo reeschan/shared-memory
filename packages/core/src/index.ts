@@ -3,6 +3,7 @@ export * from "./frontmatter.ts";
 export * from "./secrets.ts";
 export * from "./chunk.ts";
 export * from "./embed.ts";
+export * from "./rerank.ts";
 export * from "./opensearch.ts";
 export * from "./stats.ts";
 export * from "./indexing.ts";

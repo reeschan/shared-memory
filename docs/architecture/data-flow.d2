@@ -1,6 +1,6 @@
-# shared-memory のインデックス作成と検索の流れ (埋め込みと OpenSearch のつながり)
+# shared-memory のインデックス作成と検索の流れ (埋め込み・OpenSearch・リランクのつながり)
 # 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/data-flow.d2
-# 緑の線 = インデックス作成、オレンジの線 = 検索
+# 緑の線 = インデックス作成、オレンジの線 = 検索、破線 = 任意 (リランク有効時) / 照合
 direction: down
 
 vars: {
@@ -41,9 +41,17 @@ classes: {
       font-color: "#e8590c"
     }
   }
+  opt: {
+    style: {
+      stroke: "#e8590c"
+      stroke-width: 2
+      stroke-dash: 4
+      font-color: "#e8590c"
+    }
+  }
 }
 
-md: "Markdown (memories/)" {
+md: "Markdown (memories_dir)" {
   class: ext
   icon: https://cdn.simpleicons.org/markdown/__MONO__
 }
@@ -55,65 +63,78 @@ agent: "エージェントのクエリ\n(MCP search)" {
 
 index: "インデックス作成 (CLI index / MCP write)" {
   class: zone
-  direction: right
+  direction: down
 
+  check: "指紋の照合\nインデックスの _meta と設定が違えば止め\npnpm sm reindex を促す" {
+    class: svc
+  }
   chunk: "チャンク分割\n見出し単位・400〜800 字\n先頭に title を付ける" {
     class: svc
   }
   diff: "差分判定\ncontent_hash が変わったチャンクだけ" {
     class: svc
   }
-  cache: "埋め込みキャッシュ\n.cache/embeddings (hash + モデル名)" {
+  cache: "埋め込みキャッシュ\n.cache/embeddings/<指紋>/" {
     class: svc
     shape: cylinder
   }
+  check -> chunk {class: idx}
+  chunk -> diff {class: idx}
+  diff -> cache: キャッシュを確認 {class: idx}
 }
 
-ollama: "Ollama\nQwen3-Embedding-0.6B\n1024 次元" {
+embed: "埋め込み (embedding.provider)\nOllama: Qwen3-Embedding-0.6B (既定)\nまたは OpenAI 互換 API" {
   class: svc
-  width: 320
+  width: 360
   icon: https://cdn.simpleicons.org/ollama/__MONO__
 }
 
 os: "OpenSearch (エイリアス memories)" {
   class: zone
   icon: https://cdn.simpleicons.org/opensearch
-  direction: right
+  direction: down
 
   text: "title / content\nSudachi で形態素解析 → BM25" {
     class: svc
   }
-  vec: "embedding\nknn_vector 1024 次元 (HNSW / cosine)" {
+  vec: "embedding\nknn_vector (HNSW / cosine)" {
     class: svc
   }
-  pipe: "Search Pipeline\nmin_max 正規化\nBM25 0.4 + kNN 0.6" {
+  pipe: "Search Pipeline\nmin_max 正規化\nBM25 0.4 + kNN 0.6 = 一次スコア" {
     class: svc
   }
-  text -> pipe: BM25 のスコア
-  vec -> pipe: kNN のスコア
+  text -> pipe {class: qry}
+  vec -> pipe {class: qry}
 }
 
 search: "検索の後処理 (MCP サーバー)" {
   class: zone
-  direction: right
+  direction: down
 
-  rescore: "再スコア (上位 50 チャンク)\n× 時間減衰 × (1 + log(1 + アクセス回数))\n× 出所の係数" {
+  group: "memory_id でまとめる (上位 50 チャンク)\n代表 = 一次スコアが最大のチャンク" {
     class: svc
   }
-  group: "memory_id でまとめる\n上位 8 件の id・title・抜粋" {
+  rerank: "リランク (rerank.enabled のとき)\n一次スコアの上位 20 件の本文を並べ替え\nその順位をそのまま使う" {
     class: svc
   }
-  rescore -> group
+  rescore: "rescore (リランクが無効か失敗のとき)\n× (0.7 + 0.3 × 時間減衰)\n× (1 + 0.2 × ln(1 + アクセス回数)) × 出所の係数" {
+    class: svc
+  }
+  out: "上位 8 件\nid・title・抜粋・score (・rerank_score)" {
+    class: svc
+  }
+  group -> rerank: 有効 {class: opt}
+  group -> rescore: 無効・失敗 {class: qry}
+  rerank -> out {class: opt}
+  rescore -> out {class: qry}
 }
 
-md -> index.chunk: 本文 {class: idx}
-index.chunk -> index.diff {class: idx}
-index.diff -> index.cache: キャッシュを確認 {class: idx}
-index.cache -> ollama: 無いチャンクだけ\n(インストラクションなし) {class: idx}
-ollama -> os.vec: 文書ベクトル\n(投入) {class: idx}
+md -> index.check: 本文 {class: idx}
+index.cache -> embed: 無いチャンクだけ\n(document.prefix) {class: idx}
+embed -> os.vec: 文書ベクトル (投入) {class: idx}
 index.diff -> os.text: 本文 (投入) {class: idx}
 
-agent -> ollama: 検索用インストラクション\n+ クエリ {class: qry}
-ollama -> os.vec: クエリベクトル\n(kNN 検索) {class: qry}
-agent -> os.text: クエリの語\n(BM25 検索) {class: qry}
-os.pipe -> search.rescore: ハイブリッドスコア {class: qry}
+agent -> embed: query.prefix + クエリ {class: qry}
+embed -> os.vec: クエリベクトル (kNN) {class: qry}
+agent -> os.text: クエリの語 (BM25) {class: qry}
+os.pipe -> search.group: 一次スコア {class: qry}

@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseImportJsonl } from "../src/import.ts";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { planImport, parseImportJsonl } from "../src/import.ts";
+import { memoryRelPath, parseMemoryFile, serializeMemory } from "../src/frontmatter.ts";
+
+const SHA256 = "0123456789abcdef".repeat(4);
+
+function cfgWithDir(memoriesDir: string): Parameters<typeof planImport>[0] {
+  return { memories_dir: memoriesDir } as unknown as Parameters<typeof planImport>[0];
+}
 
 function row(extra: Record<string, unknown> = {}): string {
   return JSON.stringify({
@@ -62,4 +72,54 @@ test("(d) source_agent 省略で defaults の値、行の指定が優先、defau
   assert.equal(noDefault.errors.length, 1);
   assert.equal(noDefault.errors[0]!.line, 1);
   assert.match(noDefault.errors[0]!.errors.join(";"), /source_agent がありません/);
+});
+
+test("(e) source_path と source_sha256 は作られるメモリの front matter に入る", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "shared-memory-import-test-"));
+  try {
+    const parsed = parseImportJsonl(
+      row({ source_path: "docs/design.md", source_sha256: SHA256 }),
+      { source_agent: "claude" },
+    );
+    assert.deepEqual(parsed.errors, []);
+    const plan = await planImport(cfgWithDir(dir), parsed.inputs, new Date("2026-10-10T00:00:00.000Z"));
+    assert.deepEqual(plan.errors, []);
+    const { meta, body } = plan.ok[0]!;
+    assert.equal(meta.source_path, "docs/design.md");
+    assert.equal(meta.source_sha256, SHA256);
+
+    const text = serializeMemory(meta, body);
+    const r = parseMemoryFile(text, memoryRelPath(meta));
+    assert.equal(r.ok, true);
+    if (r.ok) {
+      assert.equal(r.memory.source_path, "docs/design.md");
+      assert.equal(r.memory.source_sha256, SHA256);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("(f) 出典が無い行は今までどおり通り、不正な source_sha256 はその行のエラー", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "shared-memory-import-test-"));
+  try {
+    const parsed = parseImportJsonl(
+      [
+        row(),
+        row({ title: "二件目", content: "別の内容。", source_path: "docs/a.md", source_sha256: "XYZ" }),
+        row({ title: "三件目", content: "さらに別。", source_sha256: SHA256 }),
+      ].join("\n"),
+      { source_agent: "claude" },
+    );
+    assert.deepEqual(parsed.errors, []);
+    const plan = await planImport(cfgWithDir(dir), parsed.inputs);
+    assert.deepEqual(plan.ok.map((p) => p.line), [1, 3]);
+    assert.equal(plan.errors.length, 1);
+    assert.equal(plan.errors[0]!.line, 2);
+    assert.match(plan.errors[0]!.errors.join(";"), /source_sha256/);
+    assert.equal(plan.ok[0]!.meta.source_path, undefined);
+    assert.equal(plan.ok[1]!.meta.source_sha256, SHA256);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

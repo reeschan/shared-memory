@@ -8,3 +8,4 @@ state/*.sqlite-shm
 config.local.yaml
 state/*.sqlite
 memories/
+docs/pbi/
