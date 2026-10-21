@@ -1,5 +1,6 @@
 import type { Config } from "./config.ts";
 import type { Embedder } from "./embed.ts";
+import { computeFreshness, type Freshness } from "./freshness.ts";
 import type { Kind, Provenance, Tier } from "./frontmatter.ts";
 import type { OpenSearchClient } from "./opensearch.ts";
 import type { Reranker, RerankHit } from "./rerank.ts";
@@ -17,6 +18,8 @@ export type SearchResult = {
   created_at: string;
   /** リランクした候補にだけ付く。score は rescore 後のスコアのまま */
   rerank_score?: number;
+  /** 古さの情報 (作成からの日数で stale を判定する) */
+  freshness: Freshness;
 };
 
 type RescoreSource = {
@@ -67,8 +70,8 @@ export function buildHybridQuery(cfg: Config, input: SearchInput, vector: number
 }
 
 export function rescore(hybridScore: number, src: RescoreSource, cfg: Config, now: Date): number {
-  const tier: Tier = src.tier ?? "hot";
-  const halfLife = cfg.search.half_life_days[tier];
+  // 半減期は tier によらず 1 つの値 (tier が変わる日にスコアが上がる逆転を防ぐ)
+  const halfLife = cfg.search.half_life_days;
   const base = Date.parse(src.last_accessed_at ?? src.created_at);
   const days = Number.isNaN(base) ? 0 : Math.max(0, (now.getTime() - base) / DAY_MS);
   const decay = 0.5 ** (days / halfLife);
@@ -88,7 +91,7 @@ function makeExcerpt(content: string, title: string): string {
 
 type MemoryHit = { primary: number; score: number; src: HitSource };
 
-function toResult(hit: MemoryHit): SearchResult {
+function toResult(hit: MemoryHit, cfg: Config, now: Date): SearchResult {
   const { score, src } = hit;
   return {
     id: src.memory_id,
@@ -99,11 +102,12 @@ function toResult(hit: MemoryHit): SearchResult {
     kind: src.kind,
     provenance: src.provenance,
     created_at: src.created_at,
+    freshness: computeFreshness(src, cfg, now),
   };
 }
 
-function toRerankedResult(hit: MemoryHit, rerankScore: number): SearchResult {
-  return { ...toResult(hit), rerank_score: rerankScore };
+function toRerankedResult(hit: MemoryHit, rerankScore: number, cfg: Config, now: Date): SearchResult {
+  return { ...toResult(hit, cfg, now), rerank_score: rerankScore };
 }
 
 export async function searchMemories(
@@ -129,7 +133,8 @@ export async function searchMemories(
   const memories = [...best.values()];
   const byRescore = [...memories].sort((a, b) => b.score - a.score);
   const reranker = deps.reranker;
-  if (reranker === undefined) return byRescore.slice(0, limit).map(toResult);
+  const result = (m: MemoryHit) => toResult(m, cfg, now);
+  if (reranker === undefined) return byRescore.slice(0, limit).map(result);
 
   // 候補は rescore ではなく一次スコアの上位から選ぶ (ADR 0002)
   const byPrimary = [...memories].sort((a, b) => b.primary - a.primary);
@@ -142,7 +147,7 @@ export async function searchMemories(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     deps.log?.(`rerank failed: ${msg}`);
-    return byRescore.slice(0, limit).map(toResult);
+    return byRescore.slice(0, limit).map(result);
   }
 
   const results: SearchResult[] = [];
@@ -150,10 +155,10 @@ export async function searchMemories(
   for (const h of [...ranked].sort((a, b) => b.score - a.score)) {
     if (h.index < 0 || h.index >= candidates.length || used.has(h.index)) continue;
     used.add(h.index);
-    results.push(toRerankedResult(candidates[h.index]!, h.score));
+    results.push(toRerankedResult(candidates[h.index]!, h.score, cfg, now));
   }
   // 点が返ってこなかった候補は、一次スコアの順で後ろに回す
-  for (let i = 0; i < candidates.length; i++) if (!used.has(i)) results.push(toResult(candidates[i]!));
-  for (const m of outside) results.push(toResult(m));
+  for (let i = 0; i < candidates.length; i++) if (!used.has(i)) results.push(result(candidates[i]!));
+  for (const m of outside) results.push(result(m));
   return results.slice(0, limit);
 }

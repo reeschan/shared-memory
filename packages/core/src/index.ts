@@ -11,3 +11,5 @@ export * from "./search.ts";
 export * from "./memory-store.ts";
 export * from "./tiers.ts";
 export * from "./import.ts";
+export * from "./metrics.ts";
+export * from "./freshness.ts";

@@ -86,7 +86,7 @@ search:
   default_limit: 8
   weights: { bm25: 0.4, knn: 0.6 }
   searchable_tiers: [hot, warm]
-  half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }
+  half_life_days: 90
   provenance_factor: { human_confirmed: 1.0, agent_verified: 0.85, agent_inferred: 0.7 }
 tiers: { warm_after_days: 7, cold_after_days: 30, archive_after_days: 180 }
 mcp: { host: 127.0.0.1, port: 7820, path: /mcp }
@@ -190,6 +190,55 @@ test("search.rescore の既定値と上書き", () => {
   assert.deepEqual(loadConfig(over).search.rescore, { decay_floor: 0.5, access_weight: 0.2 });
 });
 
+/** BASE_TAIL の search 節の先頭に行を足した config.yaml の一時ルートを作る */
+function mkRootWithSearch(lines: string, replaceHalfLife?: string): string {
+  const dir = mkRoot();
+  let tail = BASE_TAIL.replace("search:\n", `search:\n${lines}`);
+  if (replaceHalfLife !== undefined) tail = tail.replace("  half_life_days: 90\n", replaceHalfLife);
+  writeFileSync(join(dir, "config.yaml"), BASE_HEAD + EMB + tail);
+  return dir;
+}
+
+test("search.half_life_days は 1 つの数として読める", () => {
+  assert.equal(loadConfig(mkRoot()).search.half_life_days, 90);
+});
+
+test("search.half_life_days に旧形式のオブジェクトを書くと「1 つの数にしてください」で throw", () => {
+  const dir = mkRootWithSearch("", "  half_life_days: { hot: 30, warm: 60, cold: 120, archive: 365 }\n");
+  assert.throws(() => loadConfig(dir), /search\.half_life_days は 1 つの数にしてください/);
+});
+
+test("search.half_life_days が 0 以下や数でなければ throw", () => {
+  assert.throws(() => loadConfig(mkRootWithSearch("", "  half_life_days: 0\n")), /search\.half_life_days/);
+  assert.throws(() => loadConfig(mkRootWithSearch("", "  half_life_days: abc\n")), /search\.half_life_days/);
+});
+
+test("search.stale 節が無ければ既定 (episodic 30 / semantic 180、human_confirmed 3、ほか 1)", () => {
+  assert.deepEqual(loadConfig(mkRoot()).search.stale, {
+    after_days: { episodic: 30, semantic: 180 },
+    provenance_multiplier: { human_confirmed: 3, agent_verified: 1, agent_inferred: 1 },
+  });
+});
+
+test("search.stale の欠けたキーは既定で補い、書いた値は使う", () => {
+  const dir = mkRootWithSearch("  stale: { after_days: { episodic: 10 }, provenance_multiplier: { agent_inferred: 0.5 } }\n");
+  assert.deepEqual(loadConfig(dir).search.stale, {
+    after_days: { episodic: 10, semantic: 180 },
+    provenance_multiplier: { human_confirmed: 3, agent_verified: 1, agent_inferred: 0.5 },
+  });
+});
+
+test("search.stale の値が 0 以下なら throw", () => {
+  assert.throws(
+    () => loadConfig(mkRootWithSearch("  stale: { after_days: { semantic: 0 } }\n")),
+    /search\.stale\.after_days\.semantic/,
+  );
+  assert.throws(
+    () => loadConfig(mkRootWithSearch("  stale: { provenance_multiplier: { human_confirmed: -1 } }\n")),
+    /search\.stale\.provenance_multiplier\.human_confirmed/,
+  );
+});
+
 test(".env の値が process.env に入り、既にある環境変数は上書きされない", () => {
   const A = "SM_TEST_DOTENV_NEW";
   const B = "SM_TEST_DOTENV_EXISTING";
@@ -241,4 +290,7 @@ test("リポジトリの config.yaml は新しい項目の既定値で読める"
   assert.ok(cfg.embedding.query.prefix.startsWith("Instruct:"));
   assert.equal(cfg.rerank.enabled, false);
   assert.equal(cfg.search.rescore.decay_floor, 0.7);
+  assert.equal(cfg.search.half_life_days, 90);
+  assert.deepEqual(cfg.search.searchable_tiers, ["hot", "warm", "cold", "archive"]);
+  assert.deepEqual(cfg.search.stale.after_days, { episodic: 30, semantic: 180 });
 });
