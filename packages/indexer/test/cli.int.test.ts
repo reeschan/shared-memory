@@ -75,10 +75,8 @@ before(async () => {
       template_file: path.join(repoRoot, "opensearch/index-template.json"),
       pipeline_file: path.join(repoRoot, "opensearch/search-pipeline.json"),
     },
-    embedding: {
-      ...prod.embedding,
-      url: base.embedding.url,
-    },
+    // provider・url・prefix などを、loadConfig() で確定した埋め込みの設定に揃える
+    embedding: base.embedding,
   };
   await mkdir(path.join(root, "memories", "global"), { recursive: true });
   await writeFile(path.join(root, "pnpm-workspace.yaml"), "packages: []\n");
