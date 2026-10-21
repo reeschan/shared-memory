@@ -10,22 +10,28 @@
     <script src="/feedback/static/feedback.js" defer></script>
   </head>
   <body>
-    <a class="skip" href="#judge">判定へ移る</a>
+    <!-- 文言は feedback.js の辞書 (STRINGS) にあり、data-t のキーで入れる (日本語・英語 × 一般向け・専門向け)。
+         ここに書いた日本語は、スクリプトが動く前の表示と、キーが見つからないときの予備 -->
+    <a class="skip" href="#judge" data-t="skip">判定へ移る</a>
 
     <header class="bar">
       <div class="bar-inner wrap">
-        <a href="#top" class="brand">shared-memory <span class="muted">/ 検索フィードバック</span></a>
-        <nav class="bar-nav" aria-label="ページ内">
-          <a href="#overview">結果の一覧</a>
-          <a href="#judge">判定</a>
+        <a href="#top" class="brand">shared-memory <span class="muted" data-t="brand_sub">/ 検索フィードバック</span></a>
+        <nav class="bar-nav" aria-label="ページ内" data-t-aria="nav_label">
+          <a href="#overview" data-t="nav_overview">結果の一覧</a>
+          <a href="#judge" data-t="nav_judge">判定</a>
         </nav>
         <p class="bar-meta mono" id="bar-meta"></p>
         <p class="save-state mono" id="save-state" role="status" aria-live="polite" data-state="idle"></p>
-        <div class="mode-switch" role="group" aria-label="表示のモード">
-          <button type="button" class="mode-btn" id="mode-general" data-mode="general" aria-pressed="true" title="専門用語を使わずに表示する">一般<span class="mode-suffix">向け</span></button>
-          <button type="button" class="mode-btn" id="mode-expert" data-mode="expert" aria-pressed="false" title="評価の指標名 (nDCG・インターリービング・95% 区間など) で表示する">専門<span class="mode-suffix">向け</span></button>
+        <div class="switch mode-switch" role="group" aria-label="表示のモード" data-t-aria="mode_label">
+          <button type="button" class="switch-btn mode-btn" data-mode="general" aria-pressed="true" title="専門用語を使わずに表示する" data-t-title="mode_general_title"><span data-t="mode_general">一般</span><span class="mode-suffix" data-t="mode_suffix">向け</span></button>
+          <button type="button" class="switch-btn mode-btn" data-mode="expert" aria-pressed="false" title="評価の指標名 (nDCG・インターリービング・95% 区間など) で表示する" data-t-title="mode_expert_title"><span data-t="mode_expert">専門</span><span class="mode-suffix" data-t="mode_suffix">向け</span></button>
         </div>
-        <button type="button" class="btn btn-primary bar-confirm" id="bar-confirm" disabled>確定して送る</button>
+        <div class="switch" role="group" aria-label="言語" data-t-aria="lang_label">
+          <button type="button" class="switch-btn lang-btn" data-lang="ja" lang="ja" aria-pressed="true" aria-label="日本語">JA</button>
+          <button type="button" class="switch-btn lang-btn" data-lang="en" lang="en" aria-pressed="false" aria-label="English">EN</button>
+        </div>
+        <button type="button" class="btn btn-primary bar-confirm" id="bar-confirm" disabled data-t="confirm_button">確定して送る</button>
       </div>
     </header>
 
@@ -35,58 +41,58 @@
       <div id="app" hidden>
         <section class="hero" aria-labelledby="hero-title">
           <div>
-            <p class="eyebrow mono" id="hero-eyebrow">週 1 回 · 10 問 · 約 5 分</p>
-            <h1 class="hero-title" id="hero-title">今週の検索は、<br>役に立っていましたか。</h1>
-            <p class="lead muted" data-g="今週エージェントが実際に調べた問いと、確かめ用の問いを選びました。出てきた結果の 1 件ずつに「答えている・一部・関係ない」を付けてください。結果は 2 つの並べ方を混ぜたもので、どちらから出たかは伏せてあります。" data-x="エージェントが今週実際に投げた問いと、評価セットの問いを選びました。結果の 1 件ずつに「答えている・一部関係する・関係ない」を付けてください。どの設定から出た結果かは伏せてあります。"></p>
+            <p class="eyebrow mono" id="hero-eyebrow"></p>
+            <h1 class="hero-title" id="hero-title"><span data-t="hero_title_1">今週の検索は、</span><br><span data-t="hero_title_2">役に立っていましたか。</span></h1>
+            <p class="lead muted" data-t="hero_lead"></p>
           </div>
           <dl class="summary" id="summary">
-            <div class="summary-cell"><dt class="muted" data-g="悪化の見張り" data-x="ガード"></dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
-            <div class="summary-cell"><dt class="muted" data-g="検索の質" data-x="nDCG@10 (本番)"></dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
-            <div class="summary-cell"><dt class="muted" data-g="いまの設定が上" data-x="インターリービング"></dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
-            <div class="summary-cell"><dt class="muted" data-g="確かめ用の問い" data-x="評価セット"></dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_guard"></dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_ndcg"></dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_interleave"></dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-t="sum_evalset"></dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
           </dl>
         </section>
 
         <section id="overview" class="section" aria-labelledby="overview-title">
           <div class="section-head">
-            <h2 class="heading h2" id="overview-title">結果の一覧</h2>
+            <h2 class="heading h2" id="overview-title" data-t="overview_title">結果の一覧</h2>
             <p class="mono small muted" id="overview-meta"></p>
           </div>
           <div class="charts">
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title" data-g="検索の質の推移" data-x="nDCG@10 の推移"></span>
-                <span class="legend small muted"><span class="key key-line"></span><span data-g="いまの設定" data-x="本番"></span><span class="key key-dash"></span><span data-g="内容の近さだけ" data-x="一次スコアだけ"></span></span>
+                <span class="heading chart-title" data-t="ndcg_title"></span>
+                <span class="legend small muted"><span class="key key-line"></span><span data-t="prod"></span><span class="key key-dash"></span><span data-t="prim"></span></span>
               </figcaption>
               <div class="chart-body" id="chart-ndcg"></div>
-              <p class="chart-note small muted" data-g="いまの設定 (新しさや使われ方も加味して並べ直す) と、内容の近さだけで並べた場合を、同じ問いで毎週測ったもの。100 点に近いほど、正解が上位に来ています。" data-x="本番の設定 (rescore あり) と一次スコアだけを、同じ評価セットで毎週測ったもの。"></p>
+              <p class="chart-note small muted" data-t="ndcg_note"></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title" data-g="並べ直しで悪くなっていないか" data-x="ガード — 差と 95% 区間"></span>
-                <span class="small muted" data-g="点の差とぶれ幅" data-x="本番 − 一次スコアだけ"></span>
+                <span class="heading chart-title" data-t="guard_title"></span>
+                <span class="small muted" data-t="guard_sub"></span>
               </figcaption>
               <div class="chart-body" id="chart-guard"></div>
-              <p class="chart-note small muted" data-g="線 (ぶれ幅) がまるごと 0 より左、つまり並べ直すほうがはっきり悪い週が 2 週続いたら、通知で知らせます。設定は自動では変えません。" data-x="区間の右端が 0 より左に 2 週続いたら、トーストで知らせます。設定は自動では変えません。"></p>
+              <p class="chart-note small muted" data-t="guard_note"></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title" data-g="あなたの判定で、どちらが良かったか" data-x="インターリービングの勝ち負け"></span>
+                <span class="heading chart-title" data-t="il_title"></span>
                 <span class="mono small muted nowrap" id="chart-interleave-p" data-expert-only></span>
               </figcaption>
               <div class="chart-body" id="chart-interleave"></div>
-              <p class="chart-note legend small muted"><span class="key key-win"></span><span data-g="いまの設定が良かった" data-x="本番の勝ち"></span><span class="key key-loss"></span><span data-g="内容の近さだけが良かった" data-x="一次スコアだけの勝ち"></span><span class="key key-tie"></span><span data-g="差なし" data-x="引き分け (上位が同じ)"></span></p>
+              <p class="chart-note legend small muted"><span class="key key-win"></span><span data-t="il_win"></span><span class="key key-loss"></span><span data-t="il_loss"></span><span class="key key-tie"></span><span data-t="il_tie"></span></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title" data-g="正解の記憶はいつ作られたか" data-x="正解の作成日の分布"></span>
-                <span class="small muted">週ごとの割合</span>
+                <span class="heading chart-title" data-t="created_title"></span>
+                <span class="small muted" data-t="created_sub"></span>
               </figcaption>
               <div class="chart-body" id="chart-created"></div>
-              <p class="chart-note legend small muted"><span class="key key-corpus"></span><span data-g="すべての記憶" data-x="検索対象"></span><span class="key key-gold"></span><span data-g="正解の記憶" data-x="正解"></span><span class="tag tag-warning" id="created-warning" hidden></span></p>
+              <p class="chart-note legend small muted"><span class="key key-corpus"></span><span data-t="created_corpus"></span><span class="key key-gold"></span><span data-t="created_gold"></span><span class="tag tag-warning" id="created-warning" hidden></span></p>
             </figure>
           </div>
         </section>
@@ -94,16 +100,16 @@
         <section id="judge" class="section section-rule" aria-labelledby="judge-title" tabindex="-1">
           <div class="judge-head">
             <div>
-              <h2 class="heading h2" id="judge-title">判定</h2>
-              <p class="small muted">1 件ずつ選ぶと、その場で下書きとして保存されます。タブを閉じても続きから再開できます。</p>
+              <h2 class="heading h2" id="judge-title" data-t="judge_title">判定</h2>
+              <p class="small muted" data-t="judge_hint"></p>
             </div>
             <div class="progress">
-              <div class="progress-text mono small muted"><span id="progress-count">0 / 0 問</span><span id="progress-pct">0%</span></div>
-              <div class="progress-track" id="progress-track" role="progressbar" aria-label="判定の進み具合" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
+              <div class="progress-text mono small muted"><span id="progress-count"></span><span id="progress-pct">0%</span></div>
+              <div class="progress-track" id="progress-track" role="progressbar" aria-label="判定の進み具合" data-t-aria="progress_label" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
             </div>
           </div>
 
-          <ol class="qlist mono" id="qlist" aria-label="問いの一覧"></ol>
+          <ol class="qlist mono" id="qlist" aria-label="問いの一覧" data-t-aria="qlist_label"></ol>
 
           <article class="card" id="card" aria-labelledby="card-query">
             <header class="card-head">
@@ -112,44 +118,44 @@
             </header>
             <ul class="results" id="results"></ul>
             <footer class="card-foot">
-              <button type="button" class="btn btn-text" id="prev-q">← 前の問い</button>
-              <p class="small muted" data-g="結果は 2 つの並べ方から交互に取っています。どちらから出たかは、確定したあとにだけ分かります。" data-x="結果の並びは 2 つの設定から交互に取ったもので、出どころは確定後のレポートにだけ出ます。"></p>
-              <button type="button" class="btn btn-outline" id="next-q">次の問いへ →</button>
+              <button type="button" class="btn btn-text" id="prev-q"></button>
+              <p class="small muted" data-t="card_note"></p>
+              <button type="button" class="btn btn-outline" id="next-q"></button>
             </footer>
           </article>
         </section>
 
         <section id="confirm" class="confirm" aria-labelledby="confirm-title">
           <div>
-            <h2 class="heading h2" id="confirm-title" data-g="判定を確定して送る" data-x="確定して MCP サーバーに送る"></h2>
-            <p class="lead muted" id="confirm-text">判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。</p>
+            <h2 class="heading h2" id="confirm-title" data-t="confirm_title"></h2>
+            <p class="lead muted" id="confirm-text"></p>
             <p class="mono small muted" id="confirm-meta"></p>
           </div>
-          <button type="button" class="btn btn-primary btn-large heading" id="confirm-btn" disabled>確定して送る</button>
+          <button type="button" class="btn btn-primary btn-large heading" id="confirm-btn" disabled data-t="confirm_button">確定して送る</button>
         </section>
       </div>
 
       <section class="done" id="done" hidden aria-labelledby="done-title" tabindex="-1">
-        <p class="eyebrow mono" id="done-eyebrow">確定しました</p>
-        <h1 class="hero-title" id="done-title">判定を送りました。</h1>
+        <p class="eyebrow mono" id="done-eyebrow"></p>
+        <h1 class="hero-title" id="done-title"></h1>
         <p class="lead muted" id="done-text"></p>
         <dl class="summary summary-3" id="done-summary">
-          <div class="summary-cell"><dt class="muted" data-g="いまの設定が良かった" data-x="本番の勝ち"></dt><dd class="summary-value mono" id="done-wins">—</dd></div>
-          <div class="summary-cell"><dt class="muted" data-g="内容の近さだけが良かった" data-x="一次スコアだけの勝ち"></dt><dd class="summary-value mono" id="done-losses">—</dd></div>
-          <div class="summary-cell"><dt class="muted" data-g="差なし" data-x="引き分け"></dt><dd class="summary-value mono" id="done-ties">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-t="il_win_short"></dt><dd class="summary-value mono" id="done-wins">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-t="il_loss_short"></dt><dd class="summary-value mono" id="done-losses">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-t="il_tie_short"></dt><dd class="summary-value mono" id="done-ties">—</dd></div>
         </dl>
-        <p class="small muted" data-g="このタブは閉じてかまいません。次の週の測定に反映されます。" data-x="このタブは閉じてかまいません。次の評価 (sm eval) のレポートに反映されます。"></p>
+        <p class="small muted" data-t="done_foot"></p>
       </section>
     </main>
 
     <dialog class="dialog" id="confirm-dialog" aria-labelledby="dialog-title">
       <div class="dialog-body">
-        <h2 class="heading h2" id="dialog-title">確定して送りますか</h2>
+        <h2 class="heading h2" id="dialog-title" data-t="dialog_title">確定して送りますか</h2>
         <p id="dialog-text"></p>
-        <p class="small muted">確定したあとは直せません。</p>
+        <p class="small muted" data-t="dialog_final">確定したあとは直せません。</p>
         <div class="dialog-actions">
-          <button type="button" class="btn btn-outline" id="dialog-cancel">戻る</button>
-          <button type="button" class="btn btn-primary" id="dialog-ok">確定する</button>
+          <button type="button" class="btn btn-outline" id="dialog-cancel" data-t="dialog_cancel">戻る</button>
+          <button type="button" class="btn btn-primary" id="dialog-ok" data-t="dialog_ok">確定する</button>
         </div>
       </div>
     </dialog>

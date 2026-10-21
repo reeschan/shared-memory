@@ -285,7 +285,7 @@ eval:
 
 | 道 | 応答 |
 | --- | --- |
-| `GET /feedback/<id>` | 画面の HTML (`static/feedback.html`)。`Content-Security-Policy` は `default-src 'self'` などで外部の読み込みを許さない |
+| `GET /feedback/<id>` | 画面の HTML (`static/feedback.html`)。文言は `feedback.js` の辞書 `STRINGS` (キー → `{ ja, en }`、一般向けと専門向けで違うものは `{ g, x }`) にあり、HTML は `data-t`・`data-t-title`・`data-t-aria` のキーで受ける。言語 (`sm-feedback-lang`、既定はブラウザーの言語) とモード (`sm-feedback-mode`、既定は一般向け) は localStorage に覚える。`Content-Security-Policy` は `default-src 'self'` などで外部の読み込みを許さない |
 | `GET /feedback/static/<feedback.html\|feedback.css\|feedback.js>` | 静的ファイル (許可リストの 3 つだけ。ほかは 404) |
 | `GET /feedback/<id>/data?t=<token>` | `{ session: publicView(s) (カードに body を足したもの), dashboard: { history: EvalRun[] (最新 12 件、古い順), interleave: { wins, losses, ties, sessions, p }, created_dist: 最新の EvalRun の created_dist \| null, eval_set: { questions, human } } }` |
 | `POST /feedback/<id>/draft?t=<token>` | 本文 `{ "draft": Draft }` → `saveDraft` → 200 `{ "status": "ok" }` |

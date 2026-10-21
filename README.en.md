@@ -1,6 +1,6 @@
 # shared-memory
 
-日本語: [README.md](README.md)
+[日本語](README.md) | **English**
 
 A local RAG that gives several AI agents (Claude Code / Codex / Kimi) and you a shared knowledge base, running entirely on your own PC. Markdown files are the single source of truth; OpenSearch is a derived index that can be rebuilt at any time.
 
@@ -509,7 +509,7 @@ The evaluation set, reports, run history and feedback sessions all live in the e
 - Each question is measured as of the time it was asked. Memories created after that time are excluded from the candidates, and both the supersede state and the "now" used for time decay are set to that time. Access counts use the values at evaluation time (the report notes that the access term contains leakage).
 - What it reports: nDCG@10, Recall@5 and MRR@10 for each configuration; the per-question nDCG@10 difference (production − primary score only) with a bootstrap (5,000 resamples) 95% interval; nDCG@10 on freshness-sensitive questions alone and the rate at which the newer version ranks above the older one; the creation-date distribution of relevant memories and of the corpus (by week); and whether the conditions for revisiting the parameters are met.
 - It writes a report under `reports/`, appends a line to the history, and prints a summary and the report location. With `--json`, it prints the run result as JSON.
-- The "まとめ" (summary) at the top of the report avoids jargon: search quality is shown as a score out of 100, production is called "the current settings", the primary score only is "content similarity only", and the 95% interval is "the margin of error". The detailed metrics above follow it for experts.
+- The "まとめ" (summary) at the top of the report avoids jargon: search quality is shown as a score out of 100, production is called "the current settings", the primary score only is "content similarity only", and the 95% interval is "the margin of error". The detailed metrics above follow it for experts. Reports and toast notifications are written in Japanese only.
 
 The guard watches whether rescore makes the ranking significantly worse than the primary score alone.
 
@@ -532,11 +532,12 @@ The "revisit conditions" in the report read "yes" only when all three hold: (a) 
 
 ### The feedback page
 
-![The feedback page in the general view. A general / expert switch at the top right. At the top, a summary (degradation watch, search quality score, number of questions where the current settings won, number of check questions) and four charts; below, the list of 10 questions to judge and the result cards for one question, each with "answers / partly / not related" buttons. The first card has its full text expanded](docs/assets/feedback-screen.png)
+![The feedback page in English, plain view. Plain / expert and Japanese / English switches at the top right. At the top, a summary (degradation watch, search quality score, number of questions where the current settings won, number of check questions) and four charts; below, the list of 10 questions to judge and the result cards for one question, each with "answers / partly / not related" buttons. The first card has its full text expanded](docs/assets/feedback-screen.en.png)
 
-An example of the page (dummy data; the UI is in Japanese), in the general view with the first card's full text expanded. The MCP server process serves it at `/feedback/<session ID>?t=<token>` on the same port as `/mcp`. It loads nothing from outside and never sends memory text anywhere.
+An example of the page (dummy data), in English and the plain view, with the first card's full text expanded. The dummy questions and memories are written in Japanese; they are shown as written. The MCP server process serves it at `/feedback/<session ID>?t=<token>` on the same port as `/mcp`. It loads nothing from outside and never sends memory text anywhere.
 
-- A switch in the top bar chooses between a "general" view (the default; the choice is remembered by the browser) that replaces jargon with plain words, and an "expert" view that keeps the metric names. For example, production / primary score only become "the current settings / content similarity only", nDCG@10 becomes "search quality" out of 100, the guard and its 95% interval become "degradation watch" and "margin of error", and interleaving wins / losses / ties become "current settings were better / content similarity was better / no difference". The general view hides the sign-test p-value and the guard's reason.
+- A language switch in the top bar chooses Japanese (JA) or English (EN). The default follows the browser language (Japanese if it is Japanese, otherwise English). Only the page text changes; questions and memory titles and text are shown in the language they were written in.
+- A switch in the top bar chooses between a "plain" view (the default) that replaces jargon with plain words, and an "expert" view that keeps the metric names. The browser remembers both choices. For example, production / primary score only become "the current settings / content similarity only", nDCG@10 becomes "search quality" out of 100, the guard and its 95% interval become "degradation watch" and "margin of error", and interleaving wins / losses / ties become "current settings were better / content similarity was better / no difference". The plain view hides the sign-test p-value and the guard's reason.
 - The top shows a summary of the guard, the production nDCG@10, the accumulated interleaving results and the number of questions in the evaluation set, plus four charts (nDCG@10 over time, the guard's difference with its 95% interval, interleaving wins and losses, and the creation-date distribution of relevant memories).
 - Up to 10 questions per session. Queries that agents actually issued that week come first, preferring those where the top 10 differ between the two configurations; any remaining slots are filled with questions from the evaluation set that have no human judgment yet.
 - The results are 10 items interleaved from the production ranking and the primary-score-only ranking, with their origin hidden. For each card, choose "answers / partly / not related", and if needed tick "a newer version exists; this one is outdated".

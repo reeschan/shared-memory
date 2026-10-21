@@ -155,18 +155,18 @@ button, input { font: inherit; color: inherit; }
 .save-state[data-state="error"] { color: var(--destructive); }
 .bar-confirm { flex: none; }
 
-/* 一般向け / 専門向けの切り替え */
-.mode-switch { display: inline-flex; flex: none; border: 1px solid var(--border); }
-.mode-btn {
+/* 一般向け・専門向けと、日本語・英語の切り替え */
+.switch { display: inline-flex; flex: none; border: 1px solid var(--border); }
+.switch-btn {
   border: 0; background: none; color: var(--muted-foreground); cursor: pointer;
   padding: calc(var(--s) * 1.5) calc(var(--s) * 3);
   font-size: 0.75rem; line-height: 1.4; white-space: nowrap;
   transition: background-color 120ms, color 120ms;
 }
-.mode-btn + .mode-btn { border-left: 1px solid var(--border); }
-.mode-btn:hover { color: var(--foreground); }
-.mode-btn[aria-pressed="true"] { background: var(--foreground); color: var(--background); }
-.mode-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.switch-btn + .switch-btn { border-left: 1px solid var(--border); }
+.switch-btn:hover { color: var(--foreground); }
+.switch-btn[aria-pressed="true"] { background: var(--foreground); color: var(--background); }
+.switch-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media (max-width: 30rem) {
   .brand .muted { display: none; }
@@ -174,11 +174,13 @@ button, input { font: inherit; color: inherit; }
   /* 帯に収めるため、狭い画面では保存の状態を失敗したときだけ出す */
   .save-state:not([data-state="error"]) { display: none; }
   .mode-switch { margin-left: auto; }
+  .switch-btn { padding-inline: calc(var(--s) * 2); }
+  .bar-confirm { padding-inline: calc(var(--s) * 3); }
   .bar-inner { gap: calc(var(--s) * 3); }
   .wrap { padding-inline: calc(var(--s) * 4); }
 }
 @media (min-width: 48rem) { .bar-nav { display: flex; } }
-@media (min-width: 64rem) { .bar-meta { display: block; } }
+@media (min-width: 80rem) { .bar-meta { display: block; } }
 
 /* ---- 知らせ ---- */
 .notice {
