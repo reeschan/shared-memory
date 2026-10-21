@@ -252,6 +252,22 @@ test("(j) search は search_log に 1 行、get は get_log に 1 行残し、se
   assert.equal(afterGet.searches.length, afterSearch.searches.length);
 });
 
+test("(l) /mcp のツールにフィードバックの書き込みが無く、GET /feedback/<id> が 200 の HTML", async () => {
+  const { tools } = await client.listTools();
+  assert.ok(
+    tools.every((t) => !/feedback|draft|submit|confirm|session/i.test(t.name)),
+    `フィードバックのツールがある: ${tools.map((t) => t.name).join(", ")}`,
+  );
+  const page = await rawRequest("GET", "/feedback/fb-int-dummy", { Host: `127.0.0.1:${srv.port}` });
+  assert.equal(page.status, 200);
+  assert.match(page.body, /<html/);
+  const js = await fetch(`http://127.0.0.1:${srv.port}/feedback/static/feedback.js`);
+  assert.equal(js.status, 200);
+  assert.match(js.headers.get("content-type") ?? "", /^text\/javascript/);
+  const evil = await rawRequest("GET", "/feedback/fb-int-dummy", { Host: "evil.example.com" });
+  assert.equal(evil.status, 403);
+});
+
 test("(k) search と get の説明に freshness と stale の案内がある", async () => {
   const { tools } = await client.listTools();
   for (const name of ["search", "get"]) {
