@@ -239,6 +239,19 @@ test("search.stale の値が 0 以下なら throw", () => {
   );
 });
 
+test("eval.dir は省略すると \"\"、相対パスは root からの絶対パス、config.local.yaml で上書きできる", () => {
+  assert.deepEqual(loadConfig(mkRoot()).eval, { dir: "" });
+  assert.deepEqual(loadConfig(mkRoot(EMB, "eval: { dir: \"\" }\n")).eval, { dir: "" });
+  const rel = mkRoot(EMB, "eval: { dir: data/eval }\n");
+  const d = loadConfig(rel).eval.dir;
+  assert.ok(isAbsolute(d));
+  assert.equal(d, join(rel, "data", "eval"));
+  const absDir = join(tmpdir(), "sm-eval-abs");
+  writeFileSync(join(rel, "config.local.yaml"), `eval: { dir: ${JSON.stringify(absDir)} }\n`);
+  assert.equal(loadConfig(rel).eval.dir, absDir);
+  assert.throws(() => loadConfig(mkRoot(EMB, "eval: { dir: 3 }\n")), /eval\.dir/);
+});
+
 test(".env の値が process.env に入り、既にある環境変数は上書きされない", () => {
   const A = "SM_TEST_DOTENV_NEW";
   const B = "SM_TEST_DOTENV_EXISTING";

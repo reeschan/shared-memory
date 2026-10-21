@@ -51,3 +51,5 @@ mcp:
   port: 7820
   path: /mcp
 repos: {}   # gc の symbol_ref 確認用。リポジトリ名 -> ローカルの絶対パス
+eval:
+  dir: ""   # 評価セットの置き場所。空なら memories_dir の隣の eval/

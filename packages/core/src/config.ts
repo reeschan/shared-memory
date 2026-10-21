@@ -60,6 +60,8 @@ export type Config = {
   tiers: { warm_after_days: number; cold_after_days: number; archive_after_days: number };
   mcp: { host: string; port: number; path: string };
   repos: Record<string, string>;
+  /** 評価セットの置き場所。dir が空なら memories_dir の隣の eval/ (evalDir で決める) */
+  eval: { dir: string };
 };
 
 export function findRoot(start?: string): string {
@@ -313,13 +315,19 @@ function normalizeStale(search: Record<string, unknown>): Config["search"]["stal
   return { after_days, provenance_multiplier };
 }
 
+function normalizeEval(raw: Record<string, unknown>, abs: (p: string) => string): Config["eval"] {
+  const e = optObj(raw.eval, "eval");
+  const dir = optString(e.dir, "eval.dir", "");
+  return { dir: dir === "" ? "" : abs(dir) };
+}
+
 export function loadConfig(root?: string): Config {
   const r = root ? resolve(root) : findRoot();
   loadDotEnv(r);
   const raw = readRaw(r);
   for (const p of REQUIRED) need(raw, p);
   const abs = (p: string): string => (isAbsolute(p) ? p : resolve(r, p));
-  const c = raw as unknown as Omit<Config, "root" | "embedding" | "rerank" | "search">;
+  const c = raw as unknown as Omit<Config, "root" | "embedding" | "rerank" | "search" | "eval">;
   const search = raw.search as Record<string, unknown>;
   return {
     ...c,
@@ -341,5 +349,6 @@ export function loadConfig(root?: string): Config {
       pipeline_file: abs(c.opensearch.pipeline_file),
     },
     repos: isObj(raw.repos) ? (raw.repos as Record<string, string>) : {},
+    eval: normalizeEval(raw, abs),
   };
 }
