@@ -41,20 +41,24 @@ type HitSource = RescoreSource & {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXCERPT_CHARS = 160;
 
-export function buildFilter(cfg: Config, input: SearchInput): object[] {
-  const filter: object[] = [
-    { term: { is_superseded: false } },
-    { terms: { tier: cfg.search.searchable_tiers } },
-  ];
+/** 問われた時点の再現。supersededAt は「置き換えられた memory_id → 置き換えた側の created_at (複数あれば最も早いもの)」 */
+export type AsOf = { at: Date; supersededAt: ReadonlyMap<string, string> };
+
+export function buildFilter(cfg: Config, input: SearchInput, asOf?: AsOf): object[] {
+  // asOf があるときは今の is_superseded ではなく、その時点までに作られたものに絞る (置き換えの除外はヒットの段階で行う)
+  const filter: object[] =
+    asOf === undefined
+      ? [{ term: { is_superseded: false } }, { terms: { tier: cfg.search.searchable_tiers } }]
+      : [{ terms: { tier: cfg.search.searchable_tiers } }, { range: { created_at: { lte: asOf.at.toISOString() } } }];
   if (input.scope !== undefined) filter.push({ term: { scope: input.scope } });
   if (input.kind !== undefined) filter.push({ term: { kind: input.kind } });
   if (input.tags !== undefined && input.tags.length > 0) filter.push({ terms: { tags: input.tags } });
   return filter;
 }
 
-export function buildHybridQuery(cfg: Config, input: SearchInput, vector: number[]): object {
+export function buildHybridQuery(cfg: Config, input: SearchInput, vector: number[], asOf?: AsOf): object {
   const k = cfg.search.candidates;
-  const filter = buildFilter(cfg, input);
+  const filter = buildFilter(cfg, input, asOf);
   return {
     size: k,
     _source: { excludes: ["embedding"] },
@@ -80,6 +84,38 @@ export function rescore(hybridScore: number, src: RescoreSource, cfg: Config, no
   const access = 1 + access_weight * Math.log(1 + Math.max(0, src.access_count ?? 0));
   const prov = cfg.search.provenance_factor[src.provenance] ?? 1;
   return hybridScore * softDecay * access * prov;
+}
+
+/** rescore を効かなくした設定 (decay_floor 1、access_weight 0、provenance_factor はすべて 1)。ほかは cfg のまま。cfg は変えない */
+export function primaryOnlyConfig(cfg: Config): Config {
+  return {
+    ...cfg,
+    search: {
+      ...cfg.search,
+      provenance_factor: { human_confirmed: 1, agent_verified: 1, agent_inferred: 1 },
+      rescore: { decay_floor: 1, access_weight: 0 },
+    },
+  };
+}
+
+type SupersedeMeta = { id: string; created_at: string; supersedes?: string | undefined };
+
+/**
+ * scanMemories の Memory[] から AsOf.supersededAt を作る。
+ * 置き換えられた memory_id → 置き換えた側の created_at (複数あれば最も早いもの)。
+ * Memory はメタが平らに並ぶ形なので、平らな形と meta に包んだ形の両方を受ける
+ */
+export function supersededAtMap(memories: readonly (SupersedeMeta | { meta: SupersedeMeta })[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of memories) {
+    const meta = "meta" in m ? m.meta : m;
+    if (!meta.supersedes) continue;
+    const t = Date.parse(meta.created_at);
+    if (Number.isNaN(t)) continue;
+    const cur = out.get(meta.supersedes);
+    if (cur === undefined || t < Date.parse(cur)) out.set(meta.supersedes, meta.created_at);
+  }
+  return out;
 }
 
 function makeExcerpt(content: string, title: string): string {
@@ -115,15 +151,24 @@ export async function searchMemories(
   deps: { os: OpenSearchClient; embedder: Embedder; reranker?: Reranker; log?: (msg: string) => void },
   input: SearchInput,
   now: Date = new Date(),
+  opts: { asOf?: AsOf } = {},
 ): Promise<SearchResult[]> {
+  const asOf = opts.asOf;
+  // asOf があるとき、rescore と freshness の「今」は問われた時点
+  if (asOf !== undefined) now = asOf.at;
   const vector = await deps.embedder.embedQuery(input.query);
-  const res = await deps.os.search<HitSource>(cfg.opensearch.alias, buildHybridQuery(cfg, input, vector), {
+  const res = await deps.os.search<HitSource>(cfg.opensearch.alias, buildHybridQuery(cfg, input, vector, asOf), {
     search_pipeline: cfg.opensearch.pipeline_name,
   });
   // 1 メモリ 1 件にまとめる。代表チャンクは一次スコアが最大のもの
   const best = new Map<string, MemoryHit>();
   for (const h of res.hits) {
     const src = h._source;
+    if (asOf !== undefined) {
+      // 問われた時点までに置き換えられていたものは、まとめる前に除く
+      const at = asOf.supersededAt.get(src.memory_id);
+      if (at !== undefined && Date.parse(at) <= asOf.at.getTime()) continue;
+    }
     const cur = best.get(src.memory_id);
     if (cur === undefined || h._score > cur.primary) {
       best.set(src.memory_id, { primary: h._score, score: rescore(h._score, src, cfg, now), src });

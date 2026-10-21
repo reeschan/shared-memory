@@ -5,7 +5,7 @@ import type { Embedder } from "../src/embed.ts";
 import type { Provenance } from "../src/frontmatter.ts";
 import type { OpenSearchClient } from "../src/opensearch.ts";
 import type { Reranker } from "../src/rerank.ts";
-import { searchMemories } from "../src/search.ts";
+import { buildHybridQuery, searchMemories, type AsOf } from "../src/search.ts";
 
 const base = loadConfig();
 const now = new Date("2026-10-10T00:00:00.000Z");
@@ -275,4 +275,84 @@ test("reranker があるとき: リランクした結果とその外の結果の
     rerank_score: 0.8,
   });
   assert.equal("rerank_score" in newR!, false);
+});
+
+const asOfAt = new Date(now.getTime() - 110 * DAY);
+const asOfOf = (supersededAt: [string, string][] = []): AsOf => ({ at: asOfAt, supersededAt: new Map(supersededAt) });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const filtersOf = (body: any): object[][] => [
+  body.query.hybrid.queries[0].bool.filter,
+  body.query.hybrid.queries[1].knn.embedding.filter.bool.filter,
+];
+
+test("asOf があるとき: フィルターに is_superseded の term が無く、created_at の range (lte が asOf.at の ISO) がある", async () => {
+  const cfg = makeCfg();
+  const { os, calls } = fakeOs([{ score: 1, id: "m1", content: "m1 body" }]);
+  await searchMemories(cfg, { os, embedder }, { query: "q", scope: "global" }, now, { asOf: asOfOf() });
+  assert.equal(calls.length, 1);
+  for (const filter of filtersOf(calls[0]!.body)) {
+    assert.equal(JSON.stringify(filter).includes("is_superseded"), false);
+    assert.deepEqual(filter, [
+      { terms: { tier: cfg.search.searchable_tiers } },
+      { range: { created_at: { lte: asOfAt.toISOString() } } },
+      { term: { scope: "global" } },
+    ]);
+  }
+});
+
+test("asOf があるとき: supersededAt の時刻が asOf.at 以前のヒットは除き、asOf.at より後なら残す", async () => {
+  const cfg = makeCfg();
+  const { os } = fakeOs([
+    { score: 5, id: "before", content: "before body" },
+    { score: 4, id: "before", content: "before body 2" },
+    { score: 3, id: "equal", content: "equal body" },
+    { score: 2, id: "after", content: "after body" },
+    { score: 1, id: "never", content: "never body" },
+  ]);
+  const asOf = asOfOf([
+    ["before", new Date(asOfAt.getTime() - DAY).toISOString()],
+    ["equal", asOfAt.toISOString()],
+    ["after", new Date(asOfAt.getTime() + 1000).toISOString()],
+  ]);
+  const results = await searchMemories(cfg, { os, embedder }, { query: "q" }, now, { asOf });
+  assert.deepEqual(results.map((r) => r.id), ["after", "never"]);
+
+  const fake = fakeReranker();
+  const reranked = await searchMemories(cfg, { os, embedder, reranker: fake.reranker }, { query: "q" }, now, { asOf });
+  assert.deepEqual(fake.calls[0]!.documents, ["after body", "never body"]);
+  assert.deepEqual(reranked.map((r) => r.id), ["after", "never"]);
+});
+
+test("asOf があるとき: rescore と freshness の「今」は asOf.at になる", async () => {
+  const cfg = makeCfg({ decayFloor: 0 });
+  // now から 200 日前に作成 = asOf.at から 90 日前 (半減期ちょうど)
+  const { os } = fakeOs([{ score: 5, id: "m1", content: "m1 body", created_at: daysAgo(200) }]);
+  const [r] = await searchMemories(cfg, { os, embedder }, { query: "q" }, now, { asOf: asOfOf() });
+  assert.deepEqual(r!.freshness, { age_days: 90, idle_days: 90, last_accessed_at: null, stale: false });
+  assert.ok(Math.abs(r!.score - 2.5) < 1e-9, String(r!.score));
+
+  const [plain] = await searchMemories(cfg, { os, embedder }, { query: "q" }, now);
+  assert.equal(plain!.freshness.age_days, 200);
+  assert.ok(plain!.score < 2.5);
+});
+
+test("asOf が無いとき: OpenSearch に送るクエリは今までと同じ (is_superseded の term があり、range は無い)", async () => {
+  const cfg = makeCfg();
+  const input = { query: "q", scope: "global", tags: ["a"] };
+  const { os, calls } = fakeOs([{ score: 1, id: "m1", content: "m1 body" }]);
+  await searchMemories(cfg, { os, embedder }, input, now);
+  await searchMemories(cfg, { os, embedder }, input, now, {});
+  const expected = buildHybridQuery(cfg, input, [0.1, 0.2, 0.3]);
+  assert.equal(calls.length, 2);
+  for (const c of calls) {
+    assert.deepEqual(c.body, expected);
+    for (const filter of filtersOf(c.body)) {
+      assert.deepEqual(filter, [
+        { term: { is_superseded: false } },
+        { terms: { tier: cfg.search.searchable_tiers } },
+        { term: { scope: "global" } },
+        { terms: { tags: ["a"] } },
+      ]);
+    }
+  }
 });

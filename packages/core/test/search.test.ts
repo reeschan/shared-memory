@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadConfig, type Config } from "../src/config.ts";
-import { buildFilter, buildHybridQuery, rescore } from "../src/search.ts";
+import { buildFilter, buildHybridQuery, primaryOnlyConfig, rescore, supersededAtMap } from "../src/search.ts";
 
 const cfg = loadConfig();
 const now = new Date("2026-10-10T00:00:00.000Z");
@@ -143,4 +143,63 @@ test("(j) rescore: decay_floor 1.0・access_weight 0 なら一次スコア × �
   near(rescore(0.8, { ...base, provenance: "human_confirmed" }, c, now), 0.8);
   near(rescore(0.8, { ...base, provenance: "agent_verified" }, c, now), 0.8 * 0.85);
   near(rescore(0.8, { ...base, provenance: "agent_inferred" }, c, now), 0.8 * 0.7);
+});
+
+test("(k) buildFilter: asOf があれば is_superseded の term を外し、created_at の range (lte が asOf.at の ISO) を足す", () => {
+  const at = new Date("2026-09-01T12:34:56.000Z");
+  const asOf = { at, supersededAt: new Map<string, string>() };
+  const f0 = buildFilter(cfg, { query: "x" }, asOf);
+  assert.deepEqual(f0, [
+    { terms: { tier: cfg.search.searchable_tiers } },
+    { range: { created_at: { lte: "2026-09-01T12:34:56.000Z" } } },
+  ]);
+  const f1 = buildFilter(cfg, { query: "x", scope: "project:demo", kind: "semantic", tags: ["a"] }, asOf);
+  assert.deepEqual(f1.slice(2), [
+    { term: { scope: "project:demo" } },
+    { term: { kind: "semantic" } },
+    { terms: { tags: ["a"] } },
+  ]);
+  // asOf を渡さなければ今までと同じ
+  assert.deepEqual(buildFilter(cfg, { query: "x" }, undefined), buildFilter(cfg, { query: "x" }));
+  const q = buildHybridQuery(cfg, { query: "x" }, [0.1], asOf) as any;
+  assert.deepEqual(q.query.hybrid.queries[0].bool.filter, f0);
+  assert.deepEqual(q.query.hybrid.queries[1].knn.embedding.filter, { bool: { filter: f0 } });
+});
+
+test("(l) primaryOnlyConfig: decay_floor 1・access_weight 0・provenance_factor 全 1 を返し、元の cfg は変えない", () => {
+  const before = structuredClone(soft);
+  const p = primaryOnlyConfig(soft);
+  assert.deepEqual(p.search.rescore, { decay_floor: 1, access_weight: 0 });
+  assert.deepEqual(p.search.provenance_factor, { human_confirmed: 1, agent_verified: 1, agent_inferred: 1 });
+  assert.deepEqual(soft, before);
+  // ほかは cfg のまま
+  assert.equal(p.search.half_life_days, soft.search.half_life_days);
+  assert.deepEqual(p.search.searchable_tiers, soft.search.searchable_tiers);
+  assert.deepEqual(p.rerank, soft.rerank);
+  // rescore は一次スコアそのものになる
+  const s = rescore(0.8, { created_at: daysAgo(10_000), access_count: 9, provenance: "agent_inferred" }, p, now);
+  assert.equal(s, 0.8);
+});
+
+test("(m) supersededAtMap: 置き換えられた id → 置き換えた側の created_at。複数あれば最も早いものを取る", () => {
+  const A = "01AAAAAAAAAAAAAAAAAAAAAAAA";
+  const B = "01BBBBBBBBBBBBBBBBBBBBBBBB";
+  const m = supersededAtMap([
+    { meta: { id: "x1", created_at: "2026-05-03T00:00:00.000Z", supersedes: A } },
+    { meta: { id: "x2", created_at: "2026-05-01T00:00:00.000Z", supersedes: A } },
+    { meta: { id: "x3", created_at: "2026-05-02T00:00:00.000Z", supersedes: A } },
+    { meta: { id: "y1", created_at: "2026-06-01T00:00:00.000Z", supersedes: B } },
+    { meta: { id: A, created_at: "2026-01-01T00:00:00.000Z" } },
+  ]);
+  assert.deepEqual([...m.entries()].sort(), [
+    [A, "2026-05-01T00:00:00.000Z"],
+    [B, "2026-06-01T00:00:00.000Z"],
+  ]);
+  // scanMemories の Memory (メタが平らに並ぶ形) もそのまま受ける
+  const flat = supersededAtMap([
+    { id: "x1", created_at: "2026-05-03T00:00:00.000Z", supersedes: A },
+    { id: "x2", created_at: "2026-05-01T00:00:00.000Z", supersedes: A },
+    { id: B, created_at: "2026-01-01T00:00:00.000Z" },
+  ]);
+  assert.deepEqual([...flat.entries()], [[A, "2026-05-01T00:00:00.000Z"]]);
 });
