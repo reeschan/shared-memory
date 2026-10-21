@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { startServer } from "../src/app.ts";
 import { makeTestEnv, type TestEnv } from "../../core/test/int-helpers.ts";
+import { computeFreshness } from "@shared-memory/core";
 
 let env: TestEnv;
 let srv: { port: number; close(): Promise<void> };
@@ -157,4 +158,105 @@ test("(g) GET /health が {\"ok\":true}", async () => {
   const res = await fetch(`http://127.0.0.1:${srv.port}/health`);
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { ok: true });
+});
+
+const LOG_FROM = "1970-01-01T00:00:00.000Z";
+const LOG_TO = "9999-12-31T23:59:59.999Z";
+
+type FreshnessOut = { age_days: number; idle_days: number; last_accessed_at: string | null; stale: boolean };
+
+test("(h) get の freshness は今回のアクセスを記録する前の値", async () => {
+  const w = await call("write", {
+    ...WRITE_INPUT,
+    title: "freshness の確認用",
+    content: "MCP の get で freshness を確かめるためのメモ。テストの中だけで使う。",
+  });
+  assert.ok(!w.isError, textOf(w));
+  const id = (JSON.parse(textOf(w)) as { id: string }).id;
+
+  const g1 = await call("get", { id });
+  assert.ok(!g1.isError, textOf(g1));
+  const f1 = (JSON.parse(textOf(g1)) as { freshness: FreshnessOut }).freshness;
+  assert.equal(f1.last_accessed_at, null);
+  assert.equal(typeof f1.age_days, "number");
+  assert.equal(typeof f1.stale, "boolean");
+
+  const firstAccess = env.deps.stats.get(id)?.last_accessed_at;
+  assert.ok(firstAccess, "1 回目の get でアクセスが記録されていない");
+
+  const g2 = await call("get", { id });
+  assert.ok(!g2.isError, textOf(g2));
+  const out2 = JSON.parse(textOf(g2)) as {
+    meta: { created_at: string; kind: "semantic"; provenance: "agent_verified" };
+    freshness: FreshnessOut;
+  };
+  assert.equal(out2.freshness.last_accessed_at, firstAccess);
+  const secondAccess = env.deps.stats.get(id)?.last_accessed_at;
+  assert.ok(secondAccess && secondAccess >= firstAccess);
+  const expected = computeFreshness(
+    { created_at: out2.meta.created_at, last_accessed_at: firstAccess, kind: out2.meta.kind, provenance: out2.meta.provenance },
+    env.cfg,
+    new Date(secondAccess),
+  );
+  assert.equal(out2.freshness.idle_days, expected.idle_days);
+});
+
+test("(i) 古いアクセス記録があると get の idle_days はその記録に基づく", async () => {
+  assert.ok(writtenId, "write のテストが先に成功している必要がある");
+  const old = "2020-01-01T00:00:00.000Z";
+  env.deps.stats.recordAccess(writtenId, old);
+  const g = await call("get", { id: writtenId });
+  assert.ok(!g.isError, textOf(g));
+  const f = (JSON.parse(textOf(g)) as { freshness: FreshnessOut }).freshness;
+  assert.equal(f.last_accessed_at, old);
+  const now = env.deps.stats.get(writtenId)?.last_accessed_at;
+  assert.ok(now && now > old, "2 回目のアクセスで記録が更新されていない");
+  assert.equal(f.idle_days, computeFreshness({ created_at: old, kind: "semantic", provenance: "agent_verified" }, env.cfg, new Date(now)).idle_days);
+  assert.ok(f.idle_days > 0);
+});
+
+test("(j) search は search_log に 1 行、get は get_log に 1 行残し、search の結果に freshness がある", async () => {
+  assert.ok(writtenId, "write のテストが先に成功している必要がある");
+  const before = env.deps.stats.readLogs(LOG_FROM, LOG_TO);
+
+  const query = "pnpm のストアの置き場所";
+  const s = await call("search", { query, scope: "project:pbi012", limit: 5 });
+  assert.ok(!s.isError, textOf(s));
+  const hits = JSON.parse(textOf(s)) as { id: string; score: number; freshness?: FreshnessOut }[];
+  assert.ok(hits.length > 0);
+  for (const h of hits) {
+    assert.ok(h.freshness, `freshness が無い: ${h.id}`);
+    assert.equal(typeof h.freshness.stale, "boolean");
+    assert.equal(typeof h.freshness.age_days, "number");
+    assert.equal(typeof h.freshness.idle_days, "number");
+  }
+
+  const afterSearch = env.deps.stats.readLogs(LOG_FROM, LOG_TO);
+  assert.equal(afterSearch.searches.length, before.searches.length + 1);
+  const entry = afterSearch.searches.at(-1)!;
+  assert.equal(entry.source, "mcp");
+  assert.equal(entry.query, query);
+  assert.deepEqual(entry.filters, { scope: "project:pbi012", limit: 5 });
+  assert.deepEqual(
+    entry.results.map((r) => [r.id, r.rank]),
+    hits.map((h, i) => [h.id, i + 1]),
+  );
+
+  const g = await call("get", { id: writtenId });
+  assert.ok(!g.isError, textOf(g));
+  const afterGet = env.deps.stats.readLogs(LOG_FROM, LOG_TO);
+  assert.equal(afterGet.gets.length, afterSearch.gets.length + 1);
+  const ge = afterGet.gets.at(-1)!;
+  assert.equal(ge.source, "mcp");
+  assert.equal(ge.memory_id, writtenId);
+  assert.equal(afterGet.searches.length, afterSearch.searches.length);
+});
+
+test("(k) search と get の説明に freshness と stale の案内がある", async () => {
+  const { tools } = await client.listTools();
+  for (const name of ["search", "get"]) {
+    const d = tools.find((t) => t.name === name)?.description ?? "";
+    assert.match(d, /freshness\.stale/);
+    assert.match(d, /human_confirmed/);
+  }
 });

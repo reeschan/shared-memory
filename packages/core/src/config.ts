@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parseEnv } from "node:util";
 import { parse } from "yaml";
-import type { Provenance, Tier } from "./frontmatter.ts";
+import { KINDS, PROVENANCES, type Kind, type Provenance, type Tier } from "./frontmatter.ts";
 
 export type Config = {
   root: string;
@@ -50,9 +50,12 @@ export type Config = {
     default_limit: number;
     weights: { bm25: number; knn: number };
     searchable_tiers: Tier[];
-    half_life_days: Record<Tier, number>;
+    /** rescore の半減期 (日)。tier によらず 1 つの値 */
+    half_life_days: number;
     provenance_factor: Record<Provenance, number>;
     rescore: { decay_floor: number; access_weight: number };
+    /** 古い記憶の判定。経過日数の閾値 (kind ごと) と、出所ごとの倍率 */
+    stale: { after_days: Record<Kind, number>; provenance_multiplier: Record<Provenance, number> };
   };
   tiers: { warm_after_days: number; cold_after_days: number; archive_after_days: number };
   mcp: { host: string; port: number; path: string };
@@ -276,6 +279,40 @@ function normalizeRescore(search: Record<string, unknown>): Config["search"]["re
   };
 }
 
+function normalizeHalfLife(search: Record<string, unknown>): number {
+  const v = search.half_life_days;
+  if (isObj(v)) {
+    throw new Error("config.yaml: search.half_life_days は 1 つの数にしてください (tier ごとの値は廃止しました)");
+  }
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return bad("search.half_life_days", "正の数");
+  return v;
+}
+
+const STALE_AFTER_DAYS: Record<Kind, number> = { episodic: 30, semantic: 180 };
+const STALE_PROVENANCE_MULTIPLIER: Record<Provenance, number> = {
+  human_confirmed: 3,
+  agent_verified: 1,
+  agent_inferred: 1,
+};
+
+function normalizeStale(search: Record<string, unknown>): Config["search"]["stale"] {
+  const s = optObj(search.stale, "search.stale");
+  const pos = (v: unknown, path: string, def: number): number => {
+    if (v === undefined || v === null) return def;
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return bad(path, "正の数");
+    return v;
+  };
+  const after = optObj(s.after_days, "search.stale.after_days");
+  const mult = optObj(s.provenance_multiplier, "search.stale.provenance_multiplier");
+  const after_days = {} as Record<Kind, number>;
+  for (const k of KINDS) after_days[k] = pos(after[k], `search.stale.after_days.${k}`, STALE_AFTER_DAYS[k]);
+  const provenance_multiplier = {} as Record<Provenance, number>;
+  for (const p of PROVENANCES) {
+    provenance_multiplier[p] = pos(mult[p], `search.stale.provenance_multiplier.${p}`, STALE_PROVENANCE_MULTIPLIER[p]);
+  }
+  return { after_days, provenance_multiplier };
+}
+
 export function loadConfig(root?: string): Config {
   const r = root ? resolve(root) : findRoot();
   loadDotEnv(r);
@@ -290,8 +327,10 @@ export function loadConfig(root?: string): Config {
     embedding: normalizeEmbedding(raw),
     rerank: normalizeRerank(raw),
     search: {
-      ...(search as unknown as Omit<Config["search"], "rescore">),
+      ...(search as unknown as Omit<Config["search"], "rescore" | "half_life_days" | "stale">),
+      half_life_days: normalizeHalfLife(search),
       rescore: normalizeRescore(search),
+      stale: normalizeStale(search),
     },
     memories_dir: abs(c.memories_dir),
     state_db: abs(c.state_db),

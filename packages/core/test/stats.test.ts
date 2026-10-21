@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { StatsStore } from "../src/stats.ts";
+import { StatsStore, LOG_RETENTION_DAYS, type SearchLogEntry, type GetLogEntry } from "../src/stats.ts";
 
 function withTmp(fn: (dir: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), "stats-test-"));
@@ -92,6 +92,126 @@ test("close 後に同じパスで開き直すと値が残っている", () => {
       last_accessed_at: "2026-01-01T00:00:00.000Z",
       tier: "warm",
     });
+    s2.close();
+  });
+});
+
+function searchEntry(at: string, query: string, filters: SearchLogEntry["filters"] = {}): SearchLogEntry {
+  return {
+    at,
+    source: "mcp",
+    query,
+    filters,
+    results: [
+      { id: "m1", rank: 1, score: 0.9 },
+      { id: "m2", rank: 2, score: 0.5 },
+    ],
+  };
+}
+
+test("LOG_RETENTION_DAYS は 90", () => {
+  assert.equal(LOG_RETENTION_DAYS, 90);
+});
+
+test("logSearch で書いた行を readLogs で読むと query・filters・results がそのまま戻る", () => {
+  withTmp((dir) => {
+    const s = new StatsStore(join(dir, "s.sqlite"));
+    const full = searchEntry("2026-01-01T00:00:00.000Z", "検索 クエリ", {
+      scope: "global",
+      kind: "semantic",
+      tags: ["a", "b"],
+      limit: 5,
+    });
+    const partial: SearchLogEntry = {
+      at: "2026-01-01T00:00:01.000Z",
+      source: "cli",
+      query: "only scope",
+      filters: { scope: "repo:x" },
+      results: [],
+    };
+    const none = searchEntry("2026-01-01T00:00:02.000Z", "no filters");
+    s.logSearch(full);
+    s.logSearch(partial);
+    s.logSearch(none);
+    const { searches, gets } = s.readLogs("2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z");
+    assert.deepEqual(searches, [full, partial, none]);
+    assert.deepEqual(Object.keys(searches[1]!.filters), ["scope"]);
+    assert.deepEqual(Object.keys(searches[2]!.filters), []);
+    assert.deepEqual(gets, []);
+    s.close();
+  });
+});
+
+test("logSearch は undefined のフィルタを保存しない", () => {
+  withTmp((dir) => {
+    const s = new StatsStore(join(dir, "s.sqlite"));
+    s.logSearch(searchEntry("2026-01-01T00:00:00.000Z", "q", { scope: undefined, limit: 3 }));
+    const { searches } = s.readLogs("2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z");
+    assert.deepEqual(searches[0]!.filters, { limit: 3 });
+    s.close();
+  });
+});
+
+test("readLogs は from 以上 to 未満の行を時刻の昇順で、search と get を別々に返す", () => {
+  withTmp((dir) => {
+    const s = new StatsStore(join(dir, "s.sqlite"));
+    // 書く順と時刻の順をずらす
+    s.logSearch(searchEntry("2026-01-03T00:00:00.000Z", "q3"));
+    s.logSearch(searchEntry("2026-01-01T00:00:00.000Z", "q1"));
+    s.logSearch(searchEntry("2026-01-02T00:00:00.000Z", "q2"));
+    s.logSearch(searchEntry("2025-12-31T23:59:59.999Z", "q0"));
+    const g = (at: string, id: string): GetLogEntry => ({ at, source: "cli", memory_id: id });
+    s.logGet(g("2026-01-02T12:00:00.000Z", "b"));
+    s.logGet(g("2026-01-01T12:00:00.000Z", "a"));
+    s.logGet(g("2026-01-03T00:00:00.000Z", "c"));
+    const r = s.readLogs("2026-01-01T00:00:00.000Z", "2026-01-03T00:00:00.000Z");
+    assert.deepEqual(
+      r.searches.map((e) => e.query),
+      ["q1", "q2"],
+    );
+    assert.deepEqual(r.gets, [g("2026-01-01T12:00:00.000Z", "a"), g("2026-01-02T12:00:00.000Z", "b")]);
+    s.close();
+  });
+});
+
+test("pruneLogs(before) は before より前の行だけを消し、件数を返す", () => {
+  withTmp((dir) => {
+    const s = new StatsStore(join(dir, "s.sqlite"));
+    s.logSearch(searchEntry("2026-01-01T00:00:00.000Z", "old1"));
+    s.logSearch(searchEntry("2026-01-02T00:00:00.000Z", "old2"));
+    s.logSearch(searchEntry("2026-01-03T00:00:00.000Z", "keep"));
+    s.logGet({ at: "2026-01-01T00:00:00.000Z", source: "mcp", memory_id: "a" });
+    s.logGet({ at: "2026-01-03T00:00:00.000Z", source: "mcp", memory_id: "b" });
+    s.logGet({ at: "2026-01-04T00:00:00.000Z", source: "mcp", memory_id: "c" });
+    assert.deepEqual(s.pruneLogs("2026-01-03T00:00:00.000Z"), { searches: 2, gets: 1 });
+    const r = s.readLogs("2000-01-01T00:00:00.000Z", "2100-01-01T00:00:00.000Z");
+    assert.deepEqual(
+      r.searches.map((e) => e.query),
+      ["keep"],
+    );
+    assert.deepEqual(
+      r.gets.map((e) => e.memory_id),
+      ["b", "c"],
+    );
+    assert.deepEqual(s.pruneLogs("2026-01-03T00:00:00.000Z"), { searches: 0, gets: 0 });
+    s.close();
+  });
+});
+
+test("close 後に同じパスで開き直してもログと access_stats が残っている", () => {
+  withTmp((dir) => {
+    const p = join(dir, "s.sqlite");
+    const s1 = new StatsStore(p);
+    const e = searchEntry("2026-01-01T00:00:00.000Z", "q", { tags: ["t"] });
+    s1.logSearch(e);
+    s1.logGet({ at: "2026-01-01T00:00:01.000Z", source: "cli", memory_id: "x" });
+    s1.recordAccess("x", "2026-01-01T00:00:01.000Z");
+    s1.close();
+    const s2 = new StatsStore(p);
+    const r = s2.readLogs("2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z");
+    assert.deepEqual(r.searches, [e]);
+    assert.deepEqual(r.gets, [{ at: "2026-01-01T00:00:01.000Z", source: "cli", memory_id: "x" }]);
+    assert.equal(s2.get("x")?.access_count, 1);
     s2.close();
   });
 });

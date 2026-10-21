@@ -68,7 +68,9 @@ after(async () => {
   if (repoDir) await rm(repoDir, { recursive: true, force: true });
 });
 
-test("(a) 40 日前のメモリは runDecay で hot→cold になり、検索に出なくなる", async () => {
+test("(a) 40 日前のメモリは runDecay で hot→cold になり、cold でも検索に出る", async () => {
+  // 既定の searchable_tiers は全 tier (置き換えられたものは is_superseded で除く)
+  assert.ok(env.cfg.search.searchable_tiers.includes("cold"), "既定の検索対象に cold が入る");
   const beforeHits = await searchMemories(env.cfg, env.deps, { query: "ペンギンの飼育水温", limit: 20 });
   assert.ok(beforeHits.some((x) => x.id === OLD.id), "decay 前は検索に出る");
 
@@ -87,7 +89,7 @@ test("(a) 40 日前のメモリは runDecay で hot→cold になり、検索に
   assert.equal(env.deps.stats.get(OLD.id)?.tier, "cold");
 
   const afterHits = await searchMemories(env.cfg, env.deps, { query: "ペンギンの飼育水温", limit: 20 });
-  assert.ok(!afterHits.some((x) => x.id === OLD.id), "cold は検索に出ない");
+  assert.ok(afterHits.some((x) => x.id === OLD.id), "cold になっても検索に出る");
 });
 
 test("(b) 2 回目の runDecay は changed が空", async () => {

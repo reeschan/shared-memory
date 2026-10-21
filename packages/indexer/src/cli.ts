@@ -6,6 +6,7 @@ import {
   createReranker,
   OpenSearchClient,
   StatsStore,
+  LOG_RETENTION_DAYS,
   checkEmbeddingCompat,
   ensureSetup,
   indexIncremental,
@@ -86,7 +87,10 @@ const COMMANDS: Record<string, Command> = {
       const r = await runDecay(cfg, { os: deps.os, stats: deps.stats });
       const lines = [`メモリ ${r.total} 件 / tier 変更 ${r.changed.length} 件`];
       for (const c of r.changed) lines.push(`  ${c.memory_id}: ${c.from} → ${c.to}`);
-      emit(args.json, r, lines.join("\n"));
+      const before = new Date(Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const pruned = deps.stats.pruneLogs(before);
+      lines.push(`ログ削除: 検索 ${pruned.searches} 件 / get ${pruned.gets} 件`);
+      emit(args.json, { ...r, pruned }, lines.join("\n"));
     },
   },
   gc: {
@@ -176,11 +180,27 @@ const COMMANDS: Record<string, Command> = {
           limit: args.limit,
         },
       );
+      try {
+        deps.stats.logSearch({
+          at: new Date().toISOString(),
+          source: "cli",
+          query,
+          filters: { scope: args.scope, limit: args.limit },
+          results: results.map((r, i) => ({ id: r.id, rank: i + 1, score: r.score })),
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`警告: 検索ログを記録できませんでした: ${msg}`);
+      }
       const text =
         results.length === 0
           ? "該当なし"
           : results
-              .map((r, i) => `${i + 1}. ${r.title} [${r.id}] (${r.scope}, score ${r.score.toFixed(3)})\n   ${r.excerpt}`)
+              .map((r, i) => {
+                const stale = r.freshness.stale ? ` [古い記憶: ${r.freshness.age_days} 日前]` : "";
+                const created = r.created_at.slice(0, 10);
+                return `${i + 1}. ${r.title} [${r.id}] (${r.scope}, score ${r.score.toFixed(3)}, ${created} 作成)${stale}\n   ${r.excerpt}`;
+              })
               .join("\n");
       emit(args.json, results, text);
     },
