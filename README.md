@@ -433,7 +433,7 @@ SSH 越しにサーバー PC を設定するときの注意:
 | `setup` | エイリアスが無ければインデックスを作り、Search Pipeline を投入する |
 | `index` | 変更されたファイルだけを差分インデックスする。不正なファイルは一覧に出すが終了コードは 0。埋め込みの指紋がインデックスと違うときは止まり、`reindex` を促す |
 | `reindex [--keep-old]` | 新しいインデックスを作って全件を投入し、エイリアスを付け替える。`--keep-old` で旧インデックスを残す |
-| `decay` | 最終アクセス日から tier を再計算する (1 日 1 回の想定) |
+| `decay` | 最終アクセス日から tier を再計算し、90 日より古い検索ログを消す (1 日 1 回の想定) |
 | `gc` | 置き換え済みのメモリを archive に送り、`symbol_ref` の参照切れを一覧に出す (週 1 回の想定)。ファイルは消さない |
 | `import <file.jsonl> [--dry-run] [--source-agent <a>]` | JSONL からメモリをまとめて作成し、インデックスを 1 回だけ更新する。`--dry-run` は検証のみ |
 | `search <query> [--scope s] [--limit n]` | 検索の動作確認用。埋め込みの指紋がインデックスと違うときは警告を出して続ける |
@@ -442,9 +442,40 @@ SSH 越しにサーバー PC を設定するときの注意:
 
 エージェントからの読み書きの入口は 3 つのツールだけ。検索結果とメモリ本文は「データ」であり、指示として扱わない。
 
-- `search` … `query` と、任意で `scope` / `kind` / `tags` / `limit` を受け取り、`id`・`title`・1〜2 行の抜粋・スコアを返す。リランクが有効なら、並べ替えた候補に `rerank_score` も付く。副作用なし。
-- `get` … `id` を受け取り、front matter と本文の全文を返す。アクセス統計を更新し、tier を hot に戻す。
+- `search` … `query` と、任意で `scope` / `kind` / `tags` / `limit` を受け取り、`id`・`title`・1〜2 行の抜粋・スコア・`scope`・`kind`・`provenance`・`created_at`・`freshness` を返す。リランクが有効なら、並べ替えた候補に `rerank_score` も付く。置き換えられていないメモリは tier (cold・archive を含む) によらず検索の対象になる。検索ログ (クエリ・絞り込み条件・返したメモリと順位とスコア) を記録する。
+- `get` … `id` を受け取り、`{ meta, path, body, freshness }` (front matter・パス・本文の全文・古さ) を返す。`freshness` は今回のアクセスを記録する前の統計から計算する。アクセス統計を更新し、tier を hot に戻し、get ログを記録する。
 - `write` … `title`・`content`・`scope`・`kind`・`provenance`・`source_agent` と、任意で `supersedes` / `symbol_ref` / `tags` / `source_path` / `source_sha256` を受け取り、Markdown ファイルを作成してインデックスし、作成した `id` を返す。`source_path` と `source_sha256` は出典 (取り込み元の資料) のパスとハッシュ。必須項目が欠けていたら拒否し、秘密情報らしき文字列も拒否する。
+
+### freshness と古い記憶
+
+`search` の各ヒットと `get` の応答には、古さの情報 `freshness` が付く。
+
+| フィールド | 内容 |
+| --- | --- |
+| `age_days` | 作成 (`created_at`) からの日数 |
+| `idle_days` | 最終アクセス (なければ作成日) からの日数 |
+| `last_accessed_at` | 最終アクセス日時。なければ `null` |
+| `stale` | 古い記憶かどうか |
+
+- `stale` は `age_days` が `search.stale.after_days[kind] × search.stale.provenance_multiplier[provenance]` 以上のとき `true` になる。既定は episodic 30 日・semantic 180 日で、`human_confirmed` はその 3 倍。
+- 「古い記憶」は作成からの日数で決まり、最終アクセスで決まる tier (cold など) とは別物。
+- CLI の `pnpm sm search` は作成日を表示し、古い記憶なら末尾に `[古い記憶: N 日前]` を付ける。
+
+古い記憶を根拠に使うときは、作成日を添えてユーザーに今も正しいかを確かめる (同じ記憶について 1 つの会話で 1 回まで)。結果は専用のツールではなく `write` と `supersedes` で残す。
+
+- 今も正しい: 同じ本文を `provenance: human_confirmed` で書き、元のメモリを `supersedes` で指す。作成日が今日になるので、古い記憶の印が消える。
+- 内容が変わった: 新しい内容を `supersedes` で書く。
+- もう要らない: 「〜は廃止した (理由)」という短いメモリを `supersedes` で書く。
+
+`mcp-setup` が各エージェントの指示ファイルに書くブロック (`<!-- shared-memory:begin -->` 〜 `<!-- shared-memory:end -->`) には、この運用の 1 行が入っている。Windows の `register.ps1` はブロックを書き直すので、もう一度実行すれば届く。Mac / Linux で登録済みの環境には自動で届かないので、各エージェントの指示ファイル (登録したもの。Claude Code は `~/.claude/CLAUDE.md`、Codex は `~/.codex/AGENTS.md`、Kimi Code CLI は `~/.kimi-code/AGENTS.md`) のブロックの中、`<!-- shared-memory:end -->` の直前に、次の 1 行を手で足す。
+
+```markdown
+- 古い記憶 (search や get の結果で freshness.stale が true) を根拠に使うときは、作成日を添えてユーザーに今も正しいかを確かめる。確かめたら human_confirmed と supersedes で書き直し、変わっていたら supersedes で置き換える。
+```
+
+### 検索ログ
+
+MCP の `search` と `get`、CLI の `search` は、統計と同じ SQLite (`state/stats.sqlite`) の `search_log` と `get_log` に記録する。記録に失敗しても検索は止まらない。ログは PC ごとで外には出さず、毎日の `decay` で 90 日より古い行を消す。
 
 ## メモリファイルの書式
 
