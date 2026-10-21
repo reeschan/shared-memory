@@ -17,8 +17,8 @@ memories_dir: 'C:\Users\<you>\Proton Drive\<account>\My files\AI\knowledge-base\
 # state_db: state/stats.sqlite
 
 # 埋め込みモデルの切り替え (省略時は config.yaml の Ollama + Qwen3-Embedding-0.6B)
-# 旧キー embedding.query_instruction は embedding.query.prefix として読むが、
-# config.yaml に query.prefix があるため、こちらに旧キーだけを書いても効かない。
+# 旧キー embedding.query_instruction は embedding.query.prefix として読む (config.yaml の値より優先)。
+# 新しく書くときは embedding.query.prefix を使う。
 # 値の詳細と例は README の「埋め込みモデルの切り替え」を参照。
 # embedding:
 #   provider: openai                 # ollama (既定) / openai (OpenAI 互換)

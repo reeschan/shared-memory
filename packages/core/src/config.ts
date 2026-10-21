@@ -109,16 +109,29 @@ function merge(base: Record<string, unknown>, over: Record<string, unknown>): Re
   return out;
 }
 
+/**
+ * 1 つの設定ファイルの中で、旧キー embedding.query_instruction を embedding.query.prefix に移す。
+ * 同じファイルに query.prefix があればそちらを残す。重ねる前にファイルごとに行うので、
+ * config.local.yaml の旧キーが config.yaml の query.prefix に負けない
+ */
+function liftLegacyQuery(file: Record<string, unknown>): Record<string, unknown> {
+  const e = file.embedding;
+  if (!isObj(e) || typeof e.query_instruction !== "string") return file;
+  const { query_instruction, ...rest } = e;
+  const query = isObj(rest.query) ? rest.query : {};
+  return { ...file, embedding: { ...rest, query: { prefix: query_instruction, ...query } } };
+}
+
 /** config.yaml に、あれば config.local.yaml (PC ごとの設定。Git 管理外) を重ねる */
 function readRaw(r: string): Record<string, unknown> {
   const raw: unknown = parse(readFileSync(join(r, "config.yaml"), "utf8"));
   if (!isObj(raw)) throw new Error("config.yaml: トップレベルがマップではありません");
   const localFile = join(r, "config.local.yaml");
-  if (!existsSync(localFile)) return raw;
+  if (!existsSync(localFile)) return liftLegacyQuery(raw);
   const local: unknown = parse(readFileSync(localFile, "utf8"));
-  if (local === null || local === undefined) return raw;
+  if (local === null || local === undefined) return liftLegacyQuery(raw);
   if (!isObj(local)) throw new Error("config.local.yaml: トップレベルがマップではありません");
-  return merge(raw, local);
+  return merge(liftLegacyQuery(raw), liftLegacyQuery(local));
 }
 
 /** `<root>/.env` を読み、まだ設定されていない環境変数だけを process.env に入れる (既存の値は上書きしない) */

@@ -112,6 +112,23 @@ test("query.prefix と query_instruction が両方あれば query.prefix が優�
   assert.equal(cfg.embedding.query.prefix, "NEW: ");
 });
 
+test("config.local.yaml の旧キー query_instruction は config.yaml の query.prefix より優先", () => {
+  const dir = mkRoot(EMB + `  query: { prefix: "DEFAULT: " }\n`);
+  writeFileSync(join(dir, "config.local.yaml"), `embedding:\n  query_instruction: "LOCAL: "\n`);
+  const cfg = loadConfig(dir);
+  assert.equal(cfg.embedding.query.prefix, "LOCAL: ");
+  assert.equal("query_instruction" in cfg.embedding, false);
+});
+
+test("config.local.yaml に query.prefix と旧キーが両方あれば query.prefix が優先", () => {
+  const dir = mkRoot(EMB + `  query: { prefix: "DEFAULT: " }\n`);
+  writeFileSync(
+    join(dir, "config.local.yaml"),
+    `embedding:\n  query_instruction: "OLD: "\n  query: { prefix: "NEW: " }\n`,
+  );
+  assert.equal(loadConfig(dir).embedding.query.prefix, "NEW: ");
+});
+
 test("embedding の省略した項目に既定値が入る", () => {
   const e = loadConfig(mkRoot()).embedding;
   assert.equal(e.provider, "ollama");
