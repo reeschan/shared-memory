@@ -75,12 +75,21 @@ test -d "$SHARED_MEMORY_ROOT" || { echo "SHARED_MEMORY_ROOT がディレクト�
 
 **2. 疎通確認**
 
-Windows の手順 1 と同じ 3 つを `curl` で見る。MCP サーバーは Streamable HTTP の入り口 (`/mcp`) ではなく、Windows と同じ `/health` で確かめる (`/mcp` は正しいリクエストが無いと 4xx を返すため)。
+MCP サーバーは Streamable HTTP の入り口 (`/mcp`) ではなく、Windows と同じ `/health` で確かめる (`/mcp` は正しいリクエストが無いと 4xx を返すため)。どの構成でも、まず MCP サーバーを見る。
 
 ```bash
-curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null
-curl -fsS http://127.0.0.1:11434/api/tags | grep -q 'qwen3-embedding:0.6b'
 curl -fsS http://127.0.0.1:7820/health
+```
+
+- クライアント構成 (サーバー PC へ SSH でポート転送し、この PC では OpenSearch と Ollama を動かさない) では、MCP サーバーの確認だけでよい。OpenSearch と Ollama は見ない。
+- 単体構成 (この PC で OpenSearch と Ollama も動かす) では、続けて OpenSearch と埋め込みのサーバーも見る。接続先は固定のポートではなく、`<ルート>/config.local.yaml` (無い項目は `<ルート>/config.yaml`) の `opensearch.url` と `embedding.url` を使う。Ollama のモデルの確認は `embedding.provider` が `ollama` (既定) のときだけ行う。
+
+```bash
+OS_URL=<opensearch.url>      # 例 http://127.0.0.1:9200
+EMB_URL=<embedding.url>      # 例 http://127.0.0.1:11434
+EMB_MODEL=<embedding.model>  # 例 qwen3-embedding:0.6b
+curl -fsS "$OS_URL/_cluster/health" >/dev/null
+curl -fsS "$EMB_URL/api/tags" | grep -q "$EMB_MODEL"   # provider が ollama のときだけ
 ```
 
 止まっているものがあれば、起動方法を表示して終わる。起動してもらってから 1 からやり直す。

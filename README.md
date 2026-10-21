@@ -107,7 +107,7 @@ MCP のエンドポイントは `http://127.0.0.1:7820/mcp`。
 
 Windows は `scripts/register-tasks.ps1` でタスクスケジューラに登録する (`-WhatIf` で内容確認、`-Unregister` で削除)。MCP サーバーの起動、`decay` (毎日 09:00)、`gc` (毎週日曜 09:30) の 3 つが入る。
 
-macOS は launchd、Linux は systemd のユーザー unit で常駐させる。`__NODE__` は `which node` / `command -v node` で出る実体のパスを書く。fnm や mise の shim は launchd / systemd からは使えない。ログのフォルダは先に作る (`mkdir -p __ROOT__/.cache/logs`)。
+macOS は launchd、Linux は systemd のユーザー unit で常駐させる。`__NODE__` には `realpath "$(command -v node)"` で出る実体のパスを書く。fnm の `which node` は再起動で消える一時ディレクトリ (`fnm_multishells/...`) を指すので、そのまま書かない。fnm や mise の shim も launchd / systemd からは使えない。ログのフォルダは先に作る (`mkdir -p __ROOT__/.cache/logs`)。
 
 #### macOS (launchd)
 
@@ -250,7 +250,7 @@ loginctl enable-linger "$USER"   # ログオンしていないときも動かす
 - 設定を変えると埋め込みの指紋 (`provider`・`model`・`dimension`・`normalize`・`revision`・`query`・`document`・`extra_body` から作る識別子) が変わる。指紋がインデックスの `_meta` と違うと `index` は止まり、`pnpm sm reindex` を促す。search と MCP の起動は警告だけで続く。
 - 同じ名前で中身の違うモデルに替えたときは `revision` を上げる。次元が同じでも、指紋が変わって別物として扱われる。
 - `url` は指紋に含まれない。SSH トンネル経由で URL が変わっても、同じモデルなら作り直さなくてよい。
-- 旧キー `embedding.query_instruction` は `embedding.query.prefix` として読む。ただし `config.yaml` に `embedding.query.prefix` があるため、`config.local.yaml` に旧キーだけを書いても新しいキーに負ける。`embedding.query.prefix` に書き換える。
+- 旧キー `embedding.query_instruction` は、同じファイルに `embedding.query.prefix` が無ければ `query.prefix` として読む。読み替えはファイルごとに重ねる前に行うので、`config.local.yaml` の旧キーは `config.yaml` の `query.prefix` より優先される。新しく書くときは `embedding.query.prefix` を使う。
 - 埋め込みもリランクも、外部 API に本文を送るのは、設定でそのプロバイダーと URL を明示したときだけ。既定の Ollama はローカルで、外に送らない。
 
 今の Ollama の既定 (何も書かないときと同じ):

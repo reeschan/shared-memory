@@ -262,7 +262,7 @@ shared-memory/
 ├─ docs/
 │   ├─ design/               # この設計書と interfaces.md
 │   ├─ architecture/         # 構成図 (D2 のソースと SVG)
-│   └─ pbi/                  # 実装時の作業記録 (PBI、Jev の判定)
+│   └─ pbi/                  # 実装時の作業記録 (PBI、Jev の判定)。手元にだけ置き、Git 管理しない (.gitignore)
 ├─ config.yaml               # モデル名、次元、重み、半減期、インストラクション
 ├─ docker-compose.yml
 ├─ .cache/                   # 埋め込みキャッシュ(.gitignore)

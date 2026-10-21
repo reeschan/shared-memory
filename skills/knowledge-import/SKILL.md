@@ -46,19 +46,20 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 例 (2 行):
 
 ```jsonl
-{"title":"OpenSearch のポートは 127.0.0.1 限定","content":"docker-compose のポート指定は 127.0.0.1:9200:9200 の形にする。セキュリティプラグインを無効にしているため、外部に公開しない。\n\n出典: docs/design/design.md","scope":"project:shared-memory","kind":"semantic","provenance":"agent_verified","source_agent":"claude","tags":["opensearch","security"]}
+{"title":"OpenSearch のポートは 127.0.0.1 限定","content":"docker-compose のポート指定は 127.0.0.1:9200:9200 の形にする。セキュリティプラグインを無効にしているため、外部に公開しない。\n\n出典: docs/design/design.md","scope":"project:shared-memory","kind":"semantic","provenance":"agent_verified","source_agent":"claude","tags":["opensearch","security"],"source_path":"docs/design/design.md","source_sha256":"<docs/design/design.md の SHA-256 (64 桁の小文字 16 進)>"}
 {"title":"埋め込みモデルを qwen3-embedding:0.6b に決定","content":"2026-10-10 の検討で、埋め込みは Ollama の qwen3-embedding:0.6b (1024 次元) を使うと決めた。モデルを変えるときはインデックス名を変えて全件を再埋め込みする。","scope":"global","kind":"episodic","source_agent":"claude","supersedes":"01JABCDEFGHJKMNPQRSTVWXYZ0","tags":["embedding","decision"]}
 ```
 
-(2 行目の `supersedes` は例。実際には `search` で見つけた既存メモリの `id` を入れる。)
+(1 行目はファイルからの取り込みなので `source_path` と `source_sha256` を付ける。`source_sha256` には下の「注意点」のコマンドで求めた値を入れる。2 行目は会話からの取り込みなので付けない。2 行目の `supersedes` は例。実際には `search` で見つけた既存メモリの `id` を入れる。)
 
 ## 注意点
 
 - `provenance` の既定は `agent_verified`。人が内容を 1 件ずつ確認したものだけ `human_confirmed` にする。推測で書いたものは `agent_inferred`。
 - ファイルから取り込むときは、`source_path` と `source_sha256` を必ず付ける。`source_path` には読み込んだファイルのパスを入れる。ハッシュは OS ごとに次で求める。
   - Windows: `(Get-FileHash -Algorithm SHA256 <path>).Hash.ToLower()`
-  - macOS: `shasum -a 256 <path>`
-  - Linux: `sha256sum <path>`
+  - macOS: `shasum -a 256 <path> | cut -d ' ' -f 1`
+  - Linux: `sha256sum <path> | cut -d ' ' -f 1`
+  - `shasum` と `sha256sum` はハッシュのあとにファイル名を出すので、先頭の 64 桁だけを使う
 - ファイルから取り込むときも、本文末尾の `出典: <パス>` は今までどおり残す。
 - 会話や貼り付けから取り込むときは、`source_path` と `source_sha256` を付けない。
 - 元の文書を丸ごと 1 メモリにしない。長い文書は要点ごとに分け、元ファイルのパスを本文末尾に残す (例 `出典: C:\path\to\file.md`)。
