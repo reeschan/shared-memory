@@ -1,2 +1,153 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><title>フィードバック (仮)</title><link rel="stylesheet" href="/feedback/static/feedback.css"></head><body><p>仮の画面 (PBI-008 で置き換える)</p><script src="/feedback/static/feedback.js"></script></body></html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="color-scheme" content="light dark">
+    <title>検索フィードバック</title>
+    <link rel="stylesheet" href="/feedback/static/feedback.css">
+    <script src="/feedback/static/feedback.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#judge">判定へ移る</a>
+
+    <header class="bar">
+      <div class="bar-inner wrap">
+        <a href="#top" class="brand">shared-memory <span class="muted">/ 検索フィードバック</span></a>
+        <nav class="bar-nav" aria-label="ページ内">
+          <a href="#overview">結果の一覧</a>
+          <a href="#judge">判定</a>
+        </nav>
+        <p class="bar-meta mono" id="bar-meta"></p>
+        <p class="save-state mono" id="save-state" role="status" aria-live="polite" data-state="idle"></p>
+        <button type="button" class="btn btn-primary bar-confirm" id="bar-confirm" disabled>確定して送る</button>
+      </div>
+    </header>
+
+    <main id="top" class="wrap">
+      <p class="notice" id="notice" role="alert" hidden></p>
+
+      <div id="app" hidden>
+        <section class="hero" aria-labelledby="hero-title">
+          <div>
+            <p class="eyebrow mono" id="hero-eyebrow">週 1 回 · 10 問 · 約 5 分</p>
+            <h1 class="hero-title" id="hero-title">今週の検索は、<br>役に立っていましたか。</h1>
+            <p class="lead muted">エージェントが今週実際に投げた問いと、評価セットの問いを選びました。結果の 1 件ずつに「答えている・一部関係する・関係ない」を付けてください。どの設定から出た結果かは伏せてあります。</p>
+          </div>
+          <dl class="summary" id="summary">
+            <div class="summary-cell"><dt class="muted">ガード</dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
+            <div class="summary-cell"><dt class="muted">nDCG@10 (本番)</dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
+            <div class="summary-cell"><dt class="muted">インターリービング</dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
+            <div class="summary-cell"><dt class="muted">評価セット</dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
+          </dl>
+        </section>
+
+        <section id="overview" class="section" aria-labelledby="overview-title">
+          <div class="section-head">
+            <h2 class="heading h2" id="overview-title">結果の一覧</h2>
+            <p class="mono small muted" id="overview-meta"></p>
+          </div>
+          <div class="charts">
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title">nDCG@10 の推移</span>
+                <span class="legend small muted"><span class="key key-line"></span>本番<span class="key key-dash"></span>一次スコアだけ</span>
+              </figcaption>
+              <div class="chart-body" id="chart-ndcg"></div>
+              <p class="chart-note small muted">本番の設定 (rescore あり) と一次スコアだけを、同じ評価セットで毎週測ったもの。</p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title">ガード — 差と 95% 区間</span>
+                <span class="small muted">本番 − 一次スコアだけ</span>
+              </figcaption>
+              <div class="chart-body" id="chart-guard"></div>
+              <p class="chart-note small muted">区間の右端が 0 より左に 2 週続いたら、トーストで知らせます。設定は自動では変えません。</p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title">インターリービングの勝ち負け</span>
+                <span class="mono small muted nowrap" id="chart-interleave-p"></span>
+              </figcaption>
+              <div class="chart-body" id="chart-interleave"></div>
+              <p class="chart-note legend small muted"><span class="key key-win"></span>本番の勝ち<span class="key key-loss"></span>一次スコアだけの勝ち<span class="key key-tie"></span>引き分け (上位が同じ)</p>
+            </figure>
+
+            <figure class="chart">
+              <figcaption class="chart-cap">
+                <span class="heading chart-title">正解の作成日の分布</span>
+                <span class="small muted">週ごとの割合</span>
+              </figcaption>
+              <div class="chart-body" id="chart-created"></div>
+              <p class="chart-note legend small muted"><span class="key key-corpus"></span>検索対象<span class="key key-gold"></span>正解<span class="tag tag-warning" id="created-warning" hidden></span></p>
+            </figure>
+          </div>
+        </section>
+
+        <section id="judge" class="section section-rule" aria-labelledby="judge-title" tabindex="-1">
+          <div class="judge-head">
+            <div>
+              <h2 class="heading h2" id="judge-title">判定</h2>
+              <p class="small muted">1 件ずつ選ぶと、その場で下書きとして保存されます。タブを閉じても続きから再開できます。</p>
+            </div>
+            <div class="progress">
+              <div class="progress-text mono small muted"><span id="progress-count">0 / 0 問</span><span id="progress-pct">0%</span></div>
+              <div class="progress-track" id="progress-track" role="progressbar" aria-label="判定の進み具合" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
+            </div>
+          </div>
+
+          <ol class="qlist mono" id="qlist" aria-label="問いの一覧"></ol>
+
+          <article class="card" id="card" aria-labelledby="card-query">
+            <header class="card-head">
+              <p class="card-meta mono small muted" id="card-meta"></p>
+              <h3 class="heading card-query" id="card-query"></h3>
+            </header>
+            <ul class="results" id="results"></ul>
+            <footer class="card-foot">
+              <button type="button" class="btn btn-text" id="prev-q">← 前の問い</button>
+              <p class="small muted">結果の並びは 2 つの設定から交互に取ったもので、出どころは確定後のレポートにだけ出ます。</p>
+              <button type="button" class="btn btn-outline" id="next-q">次の問いへ →</button>
+            </footer>
+          </article>
+        </section>
+
+        <section id="confirm" class="confirm" aria-labelledby="confirm-title">
+          <div>
+            <h2 class="heading h2" id="confirm-title">確定して MCP サーバーに送る</h2>
+            <p class="lead muted" id="confirm-text">判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。</p>
+            <p class="mono small muted" id="confirm-meta"></p>
+          </div>
+          <button type="button" class="btn btn-primary btn-large heading" id="confirm-btn" disabled>確定して送る</button>
+        </section>
+      </div>
+
+      <section class="done" id="done" hidden aria-labelledby="done-title" tabindex="-1">
+        <p class="eyebrow mono" id="done-eyebrow">確定しました</p>
+        <h1 class="hero-title" id="done-title">判定を送りました。</h1>
+        <p class="lead muted" id="done-text"></p>
+        <dl class="summary summary-3" id="done-summary">
+          <div class="summary-cell"><dt class="muted">本番の勝ち</dt><dd class="summary-value mono" id="done-wins">—</dd></div>
+          <div class="summary-cell"><dt class="muted">一次スコアだけの勝ち</dt><dd class="summary-value mono" id="done-losses">—</dd></div>
+          <div class="summary-cell"><dt class="muted">引き分け</dt><dd class="summary-value mono" id="done-ties">—</dd></div>
+        </dl>
+        <p class="small muted">このタブは閉じてかまいません。次の評価 (sm eval) のレポートに反映されます。</p>
+      </section>
+    </main>
+
+    <dialog class="dialog" id="confirm-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-body">
+        <h2 class="heading h2" id="dialog-title">確定して送りますか</h2>
+        <p id="dialog-text"></p>
+        <p class="small muted">確定したあとは直せません。</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-outline" id="dialog-cancel">戻る</button>
+          <button type="button" class="btn btn-primary" id="dialog-ok">確定する</button>
+        </div>
+      </div>
+    </dialog>
+  </body>
+</html>
