@@ -1,1 +1,0 @@
-{"model": "jev-1.13.0", "answers": {"targets_named": {"type": "noul", "noul": 0.98}, "off_limits_named": {"type": "noul", "noul": 0.97}, "criteria_checkable": {"type": "noul", "noul": 0.5}, "commands_runnable": {"type": "noul", "noul": 0.8}, "needs_outside_context": {"type": "noul", "noul": 0.33}}, "usage": {"input_tokens": 1441, "output_tokens": 97}}

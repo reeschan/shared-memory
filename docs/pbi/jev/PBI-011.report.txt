@@ -1,6 +1,0 @@
-検証コマンドの出力:
-1. cli.int.test.ts → # tests 6 / # pass 6 / # fail 0
-2. pnpm typecheck → 終了コード 0
-3. pnpm sm → 使い方 (setup/index/reindex/search) を表示し exit code 1
-変更箇所: packages/indexer/src/cli.ts (160 行), packages/indexer/test/cli.int.test.ts (新規 138 行)
-自己判定: 条件1〜4 すべて pass
