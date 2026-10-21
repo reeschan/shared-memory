@@ -21,6 +21,10 @@
         </nav>
         <p class="bar-meta mono" id="bar-meta"></p>
         <p class="save-state mono" id="save-state" role="status" aria-live="polite" data-state="idle"></p>
+        <div class="mode-switch" role="group" aria-label="表示のモード">
+          <button type="button" class="mode-btn" id="mode-general" data-mode="general" aria-pressed="true" title="専門用語を使わずに表示する">一般<span class="mode-suffix">向け</span></button>
+          <button type="button" class="mode-btn" id="mode-expert" data-mode="expert" aria-pressed="false" title="評価の指標名 (nDCG・インターリービング・95% 区間など) で表示する">専門<span class="mode-suffix">向け</span></button>
+        </div>
         <button type="button" class="btn btn-primary bar-confirm" id="bar-confirm" disabled>確定して送る</button>
       </div>
     </header>
@@ -33,13 +37,13 @@
           <div>
             <p class="eyebrow mono" id="hero-eyebrow">週 1 回 · 10 問 · 約 5 分</p>
             <h1 class="hero-title" id="hero-title">今週の検索は、<br>役に立っていましたか。</h1>
-            <p class="lead muted">エージェントが今週実際に投げた問いと、評価セットの問いを選びました。結果の 1 件ずつに「答えている・一部関係する・関係ない」を付けてください。どの設定から出た結果かは伏せてあります。</p>
+            <p class="lead muted" data-g="今週エージェントが実際に調べた問いと、確かめ用の問いを選びました。出てきた結果の 1 件ずつに「答えている・一部・関係ない」を付けてください。結果は 2 つの並べ方を混ぜたもので、どちらから出たかは伏せてあります。" data-x="エージェントが今週実際に投げた問いと、評価セットの問いを選びました。結果の 1 件ずつに「答えている・一部関係する・関係ない」を付けてください。どの設定から出た結果かは伏せてあります。"></p>
           </div>
           <dl class="summary" id="summary">
-            <div class="summary-cell"><dt class="muted">ガード</dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
-            <div class="summary-cell"><dt class="muted">nDCG@10 (本番)</dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
-            <div class="summary-cell"><dt class="muted">インターリービング</dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
-            <div class="summary-cell"><dt class="muted">評価セット</dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-g="悪化の見張り" data-x="ガード"></dt><dd class="summary-value heading" id="sum-guard">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-g="検索の質" data-x="nDCG@10 (本番)"></dt><dd class="summary-value mono" id="sum-ndcg">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-g="いまの設定が上" data-x="インターリービング"></dt><dd class="summary-value mono" id="sum-interleave">—</dd></div>
+            <div class="summary-cell"><dt class="muted" data-g="確かめ用の問い" data-x="評価セット"></dt><dd class="summary-value mono" id="sum-evalset">—</dd></div>
           </dl>
         </section>
 
@@ -51,38 +55,38 @@
           <div class="charts">
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title">nDCG@10 の推移</span>
-                <span class="legend small muted"><span class="key key-line"></span>本番<span class="key key-dash"></span>一次スコアだけ</span>
+                <span class="heading chart-title" data-g="検索の質の推移" data-x="nDCG@10 の推移"></span>
+                <span class="legend small muted"><span class="key key-line"></span><span data-g="いまの設定" data-x="本番"></span><span class="key key-dash"></span><span data-g="内容の近さだけ" data-x="一次スコアだけ"></span></span>
               </figcaption>
               <div class="chart-body" id="chart-ndcg"></div>
-              <p class="chart-note small muted">本番の設定 (rescore あり) と一次スコアだけを、同じ評価セットで毎週測ったもの。</p>
+              <p class="chart-note small muted" data-g="いまの設定 (新しさや使われ方も加味して並べ直す) と、内容の近さだけで並べた場合を、同じ問いで毎週測ったもの。100 点に近いほど、正解が上位に来ています。" data-x="本番の設定 (rescore あり) と一次スコアだけを、同じ評価セットで毎週測ったもの。"></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title">ガード — 差と 95% 区間</span>
-                <span class="small muted">本番 − 一次スコアだけ</span>
+                <span class="heading chart-title" data-g="並べ直しで悪くなっていないか" data-x="ガード — 差と 95% 区間"></span>
+                <span class="small muted" data-g="点の差とぶれ幅" data-x="本番 − 一次スコアだけ"></span>
               </figcaption>
               <div class="chart-body" id="chart-guard"></div>
-              <p class="chart-note small muted">区間の右端が 0 より左に 2 週続いたら、トーストで知らせます。設定は自動では変えません。</p>
+              <p class="chart-note small muted" data-g="線 (ぶれ幅) がまるごと 0 より左、つまり並べ直すほうがはっきり悪い週が 2 週続いたら、通知で知らせます。設定は自動では変えません。" data-x="区間の右端が 0 より左に 2 週続いたら、トーストで知らせます。設定は自動では変えません。"></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title">インターリービングの勝ち負け</span>
-                <span class="mono small muted nowrap" id="chart-interleave-p"></span>
+                <span class="heading chart-title" data-g="あなたの判定で、どちらが良かったか" data-x="インターリービングの勝ち負け"></span>
+                <span class="mono small muted nowrap" id="chart-interleave-p" data-expert-only></span>
               </figcaption>
               <div class="chart-body" id="chart-interleave"></div>
-              <p class="chart-note legend small muted"><span class="key key-win"></span>本番の勝ち<span class="key key-loss"></span>一次スコアだけの勝ち<span class="key key-tie"></span>引き分け (上位が同じ)</p>
+              <p class="chart-note legend small muted"><span class="key key-win"></span><span data-g="いまの設定が良かった" data-x="本番の勝ち"></span><span class="key key-loss"></span><span data-g="内容の近さだけが良かった" data-x="一次スコアだけの勝ち"></span><span class="key key-tie"></span><span data-g="差なし" data-x="引き分け (上位が同じ)"></span></p>
             </figure>
 
             <figure class="chart">
               <figcaption class="chart-cap">
-                <span class="heading chart-title">正解の作成日の分布</span>
+                <span class="heading chart-title" data-g="正解の記憶はいつ作られたか" data-x="正解の作成日の分布"></span>
                 <span class="small muted">週ごとの割合</span>
               </figcaption>
               <div class="chart-body" id="chart-created"></div>
-              <p class="chart-note legend small muted"><span class="key key-corpus"></span>検索対象<span class="key key-gold"></span>正解<span class="tag tag-warning" id="created-warning" hidden></span></p>
+              <p class="chart-note legend small muted"><span class="key key-corpus"></span><span data-g="すべての記憶" data-x="検索対象"></span><span class="key key-gold"></span><span data-g="正解の記憶" data-x="正解"></span><span class="tag tag-warning" id="created-warning" hidden></span></p>
             </figure>
           </div>
         </section>
@@ -109,7 +113,7 @@
             <ul class="results" id="results"></ul>
             <footer class="card-foot">
               <button type="button" class="btn btn-text" id="prev-q">← 前の問い</button>
-              <p class="small muted">結果の並びは 2 つの設定から交互に取ったもので、出どころは確定後のレポートにだけ出ます。</p>
+              <p class="small muted" data-g="結果は 2 つの並べ方から交互に取っています。どちらから出たかは、確定したあとにだけ分かります。" data-x="結果の並びは 2 つの設定から交互に取ったもので、出どころは確定後のレポートにだけ出ます。"></p>
               <button type="button" class="btn btn-outline" id="next-q">次の問いへ →</button>
             </footer>
           </article>
@@ -117,7 +121,7 @@
 
         <section id="confirm" class="confirm" aria-labelledby="confirm-title">
           <div>
-            <h2 class="heading h2" id="confirm-title">確定して MCP サーバーに送る</h2>
+            <h2 class="heading h2" id="confirm-title" data-g="判定を確定して送る" data-x="確定して MCP サーバーに送る"></h2>
             <p class="lead muted" id="confirm-text">判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。</p>
             <p class="mono small muted" id="confirm-meta"></p>
           </div>
@@ -130,11 +134,11 @@
         <h1 class="hero-title" id="done-title">判定を送りました。</h1>
         <p class="lead muted" id="done-text"></p>
         <dl class="summary summary-3" id="done-summary">
-          <div class="summary-cell"><dt class="muted">本番の勝ち</dt><dd class="summary-value mono" id="done-wins">—</dd></div>
-          <div class="summary-cell"><dt class="muted">一次スコアだけの勝ち</dt><dd class="summary-value mono" id="done-losses">—</dd></div>
-          <div class="summary-cell"><dt class="muted">引き分け</dt><dd class="summary-value mono" id="done-ties">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-g="いまの設定が良かった" data-x="本番の勝ち"></dt><dd class="summary-value mono" id="done-wins">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-g="内容の近さだけが良かった" data-x="一次スコアだけの勝ち"></dt><dd class="summary-value mono" id="done-losses">—</dd></div>
+          <div class="summary-cell"><dt class="muted" data-g="差なし" data-x="引き分け"></dt><dd class="summary-value mono" id="done-ties">—</dd></div>
         </dl>
-        <p class="small muted">このタブは閉じてかまいません。次の評価 (sm eval) のレポートに反映されます。</p>
+        <p class="small muted" data-g="このタブは閉じてかまいません。次の週の測定に反映されます。" data-x="このタブは閉じてかまいません。次の評価 (sm eval) のレポートに反映されます。"></p>
       </section>
     </main>
 

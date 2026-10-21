@@ -30,6 +30,11 @@
   let dirty = false;
   let closed = false;
   let submitting = false;
+  /** 表示のモード。"general" = 一般向け (専門用語を言い換える) / "expert" = 専門向け (指標名のまま) */
+  let mode = loadMode();
+  /** モードを切り替えたときに描き直すための、最後に読んだデータと完了の画面の中身 */
+  /** @type {any} */ let lastData = null;
+  /** @type {any} */ let lastDone = null;
 
   // ---- 小さな道具 ----
   function $(id) {
@@ -76,6 +81,70 @@
 
   function num(v, digits) {
     return typeof v === "number" && Number.isFinite(v) ? v.toFixed(digits) : "—";
+  }
+
+  // ---- 表示のモード ----
+  const MODE_KEY = "sm-feedback-mode";
+
+  function loadMode() {
+    try {
+      return localStorage.getItem(MODE_KEY) === "expert" ? "expert" : "general";
+    } catch {
+      return "general";
+    }
+  }
+
+  function saveMode() {
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {
+      // 保存できなくても、このタブの中では切り替わる
+    }
+  }
+
+  /** 一般向けと専門向けの文言から、今のモードのほうを返す */
+  function pick(general, expert) {
+    return mode === "expert" ? expert : general;
+  }
+
+  /** nDCG などの 0〜1 の値。一般向けは 100 点満点の整数、専門向けは小数 3 桁 */
+  function score(v) {
+    if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+    return mode === "expert" ? v.toFixed(3) : String(Math.round(v * 100));
+  }
+
+  /** 差の値。一般向けは点 (小数 1 桁)、専門向けは小数 3 桁 */
+  function scoreDiff(v) {
+    if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+    return mode === "expert" ? v.toFixed(3) : (v * 100).toFixed(1) + " 点";
+  }
+
+  /** 書き込みの出どころ。一般向けは言葉に直す */
+  function provenanceLabel(p) {
+    if (mode === "expert") return p;
+    return p === "human_confirmed" ? "人が確認" : p === "agent_verified" ? "エージェントが確認" : p === "agent_inferred" ? "エージェントの推測" : p;
+  }
+
+  function applyMode() {
+    document.documentElement.dataset.mode = mode;
+    for (const b of document.querySelectorAll(".mode-btn")) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-mode") === mode ? "true" : "false");
+    }
+    for (const el of document.querySelectorAll("[data-g]")) {
+      el.textContent = (mode === "expert" ? el.getAttribute("data-x") : el.getAttribute("data-g")) || "";
+    }
+    for (const el of document.querySelectorAll("[data-expert-only]")) {
+      /** @type {HTMLElement} */ (el).hidden = mode !== "expert";
+    }
+    if (lastData !== null && !closed) renderAll(lastData);
+    if (lastDone !== null) renderDone(lastDone.written, lastDone.outcomes);
+  }
+
+  function setMode(next) {
+    if (next !== "general" && next !== "expert") return;
+    mode = next;
+    saveMode();
+    applyMode();
   }
 
   /** 0.874 → ".874"、-0.012 → "−.012" (グラフの目盛り用) */
@@ -186,6 +255,7 @@
 
   /** 完了の画面。written が null なら「確定済み」(すでに確定されていた) の画面 */
   function showDone(written, outcomes) {
+    lastDone = { written: written, outcomes: outcomes };
     closed = true;
     clearTimeout(saveTimer);
     $("app").hidden = true;
@@ -194,6 +264,12 @@
     done.hidden = false;
     setConfirmEnabled(false);
     setSaveState("closed");
+    renderDone(written, outcomes);
+    done.focus();
+  }
+
+  /** 完了の画面の文言と集計 (モードを切り替えたときも呼ぶ) */
+  function renderDone(written, outcomes) {
     if (written === null) {
       $("done-eyebrow").textContent = "確定済み";
       $("done-title").textContent = "このセッションは確定済みです。";
@@ -201,8 +277,10 @@
     } else {
       $("done-eyebrow").textContent = "確定しました";
       $("done-title").textContent = "判定を送りました。";
-      $("done-text").textContent =
-        written + " 問の判定を評価セットに「人の判定」として書き込みました。インターリービングの出どころの集計は次のとおりです。";
+      $("done-text").textContent = pick(
+        written + " 問の判定を「人の判定」として保存しました。あなたの判定で、どちらの並べ方が良かったかは次のとおりです。",
+        written + " 問の判定を評価セットに「人の判定」として書き込みました。インターリービングの出どころの集計は次のとおりです。",
+      );
     }
     const tally = { a: 0, b: 0, tie: 0 };
     for (const o of Object.values(outcomes || {})) if (o in tally) tally[o]++;
@@ -211,7 +289,6 @@
     $("done-wins").textContent = String(tally.a);
     $("done-losses").textContent = String(tally.b);
     $("done-ties").textContent = String(tally.tie);
-    done.focus();
   }
 
   // ---- 上の帯・見出し・要約 ----
@@ -228,27 +305,38 @@
     const guard = $("sum-guard");
     clear(guard);
     if (latest === null) {
-      append(guard, [h("span", { class: "dot", "data-level": "none", "aria-hidden": "true" }), "評価なし"]);
+      append(guard, [h("span", { class: "dot", "data-level": "none", "aria-hidden": "true" }), pick("まだ測っていない", "評価なし")]);
     } else {
       const level = latest.guard.alert ? "alert" : latest.guard.worse ? "worse" : "ok";
-      const text = level === "alert" ? "警告" : level === "worse" ? "悪化の兆し" : "問題なし";
+      const text = level === "alert" ? pick("悪くなっている", "警告") : level === "worse" ? "悪化の兆し" : "問題なし";
       append(guard, [h("span", { class: "dot", "data-level": level, "aria-hidden": "true" }), text]);
-      if (latest.guard.reason) guard.title = latest.guard.reason;
+      // 理由は指標の言葉で書かれているので、専門向けだけに出す
+      if (latest.guard.reason && mode === "expert") guard.title = latest.guard.reason;
+      else guard.removeAttribute("title");
     }
 
-    $("sum-ndcg").textContent = latest === null ? "—" : num(latest.production.ndcg10, 3);
+    const sumNdcg = $("sum-ndcg");
+    clear(sumNdcg);
+    append(sumNdcg, latest === null ? "—" : [score(latest.production.ndcg10), mode === "expert" ? null : h("span", { class: "sub" }, "/ 100")]);
 
     const il = data.dashboard.interleave;
     const sumIl = $("sum-interleave");
     clear(sumIl);
-    append(sumIl, [il.wins + " – " + il.losses, h("span", { class: "sub" }, "分 " + il.ties)]);
+    // 一般向けは「いまの設定が良かった問いの数」を主に、逆と差なしを添える
+    append(
+      sumIl,
+      mode === "expert"
+        ? [il.wins + " – " + il.losses, h("span", { class: "sub" }, "分 " + il.ties)]
+        : [il.wins + " 問", h("span", { class: "sub" }, "逆 " + il.losses + " · 差なし " + il.ties)],
+    );
 
     const es = data.dashboard.eval_set;
     const sumEs = $("sum-evalset");
     clear(sumEs);
-    append(sumEs, [es.questions + " 問", h("span", { class: "sub" }, "人 " + es.human)]);
+    append(sumEs, [es.questions + " 問", h("span", { class: "sub" }, pick("判定済み ", "人 ") + es.human)]);
 
-    $("overview-meta").textContent = latest === null ? "評価の履歴なし" : "最終評価 " + localTime(latest.at) + " · sm eval";
+    $("overview-meta").textContent =
+      latest === null ? pick("まだ測っていません", "評価の履歴なし") : pick("最後に測った日時 " + localTime(latest.at), "最終評価 " + localTime(latest.at) + " · sm eval");
   }
 
   // ---- グラフ 1: nDCG@10 の推移 ----
@@ -271,15 +359,19 @@
 
     const first = hist[0], last = hist[hist.length - 1];
     const svg = svgRoot(
-      "週ごとの nDCG@10。本番は " + num(first.production.ndcg10, 3) + " から " + num(last.production.ndcg10, 3) +
-        "、一次スコアだけは " + num(first.primary.ndcg10, 3) + " から " + num(last.primary.ndcg10, 3),
+      pick(
+        "週ごとの検索の質 (100 点満点)。いまの設定は " + score(first.production.ndcg10) + " 点から " + score(last.production.ndcg10) +
+          " 点、内容の近さだけは " + score(first.primary.ndcg10) + " 点から " + score(last.primary.ndcg10) + " 点",
+        "週ごとの nDCG@10。本番は " + num(first.production.ndcg10, 3) + " から " + num(last.production.ndcg10, 3) +
+          "、一次スコアだけは " + num(first.primary.ndcg10, 3) + " から " + num(last.primary.ndcg10, 3),
+      ),
     );
     const mid = (lo + hi) / 2;
     const grid = s("g", { class: "c-grid" });
     const ticks = s("g");
     for (const v of [hi, mid, lo]) {
       grid.appendChild(s("line", { x1: left, y1: y(v).toFixed(1), x2: right, y2: y(v).toFixed(1) }));
-      ticks.appendChild(label(0, (y(v) + 3).toFixed(1), short(v, 3).replace("+", "")));
+      ticks.appendChild(label(0, (y(v) + 3).toFixed(1), mode === "expert" ? short(v, 3).replace("+", "") : String(Math.round(v * 100))));
     }
     svg.appendChild(grid);
     svg.appendChild(ticks);
@@ -316,15 +408,20 @@
     const rowH = (bottom - top) / rows.length;
     const last = rows[rows.length - 1];
     const svg = svgRoot(
-      "週ごとの差 (本番 − 一次スコアだけ) と 95% 区間。最新の週は " + num(last.diff.mean, 3) + "、区間 " + num(last.diff.lo, 3) + " から " + num(last.diff.hi, 3) +
-        (last.guard.worse ? "。区間の右端が 0 より左で、悪化している" : "。有意な悪化はない"),
+      pick(
+        "週ごとの点の差 (いまの設定 − 内容の近さだけ) とぶれ幅。最新の週は " + scoreDiff(last.diff.mean) + "、ぶれ幅 " + scoreDiff(last.diff.lo) + " から " + scoreDiff(last.diff.hi) +
+          (last.guard.worse ? "。ぶれ幅ごと 0 より左で、悪くなっている" : "。はっきり悪くなってはいない"),
+        "週ごとの差 (本番 − 一次スコアだけ) と 95% 区間。最新の週は " + num(last.diff.mean, 3) + "、区間 " + num(last.diff.lo, 3) + " から " + num(last.diff.hi, 3) +
+          (last.guard.worse ? "。区間の右端が 0 より左で、悪化している" : "。有意な悪化はない"),
+      ),
     );
     svg.appendChild(s("rect", { x: left, y: top, width: (x(0) - left).toFixed(1), height: bottom - top, class: "c-worse" }));
     svg.appendChild(s("line", { x1: x(0).toFixed(1), y1: top, x2: x(0).toFixed(1), y2: bottom, class: "c-zero" }));
-    svg.appendChild(label(left + 4, top + 12, "悪化"));
-    svg.appendChild(label(left, 160, short(-m, 2)));
+    svg.appendChild(label(left + 4, top + 12, pick("悪くなる側", "悪化")));
+    const axis = (v) => (mode === "expert" ? short(v, 2) : short(v * 100, 1));
+    svg.appendChild(label(left, 160, axis(-m)));
     svg.appendChild(label(x(0).toFixed(1), 160, "0", "middle"));
-    svg.appendChild(label(right, 160, short(m, 2), "end"));
+    svg.appendChild(label(right, 160, axis(m), "end"));
     rows.forEach((r, i) => {
       const cy = top + rowH * (i + 0.5);
       const isLast = i === rows.length - 1;
@@ -368,7 +465,10 @@
     const bw = Math.min(36, slot * 0.6);
     const unit = (bottom - top) / max;
     const svg = svgRoot(
-      "週ごとの勝ち負け。累計は本番 " + totals.wins + " 勝、一次スコアだけ " + totals.losses + " 勝、引き分け " + totals.ties,
+      pick(
+        "週ごとの判定の結果。累計は、いまの設定が良かった " + totals.wins + " 問、内容の近さだけが良かった " + totals.losses + " 問、差なし " + totals.ties + " 問",
+        "週ごとの勝ち負け。累計は本番 " + totals.wins + " 勝、一次スコアだけ " + totals.losses + " 勝、引き分け " + totals.ties,
+      ),
     );
     svg.appendChild(s("line", { x1: left, y1: bottom, x2: right, y2: bottom, class: "c-grid" }));
     bars.forEach((b, i) => {
@@ -412,7 +512,8 @@
     const yv = (v) => bottom - (v / max) * (bottom - top);
     const pct = (v) => Math.round(v * 100) + "%";
     const svg = svgRoot(
-      "作成週ごとの割合。検索対象は " + cols.map((c) => pct(c.c)).join("、") + "。正解は " + cols.map((c) => pct(c.g)).join("、"),
+      pick("作られた週ごとの割合。すべての記憶は ", "作成週ごとの割合。検索対象は ") + cols.map((c) => pct(c.c)).join("、") +
+        pick("。正解の記憶は ", "。正解は ") + cols.map((c) => pct(c.g)).join("、"),
     );
     svg.appendChild(s("line", { x1: left, y1: bottom, x2: right, y2: bottom, class: "c-grid" }));
     const fs = cols.length > 6 ? 7 : 9;
@@ -433,11 +534,25 @@
     });
     const last = cols[cols.length - 1];
     if (last.c > 0.05 && last.g < last.c / 4) {
-      warn.textContent = last.week + " の記憶が正解にほぼ無い";
+      warn.textContent = pick(last.week + " に作った記憶が、正解にほとんど入っていない", last.week + " の記憶が正解にほぼ無い");
       warn.hidden = false;
     }
     clear(host);
     host.appendChild(svg);
+  }
+
+  /** 上の帯・要約・グラフ 4 つと、表示中の問いを描く (モードを切り替えたときも呼ぶ) */
+  function renderAll(data) {
+    renderHeader(data);
+    const hist = data.dashboard.history || [];
+    renderNdcg(hist);
+    renderGuard(hist);
+    renderInterleave(hist, data.dashboard.interleave);
+    renderCreated(data.dashboard.created_dist);
+    if (session !== null && session.items.length > 0 && $("qlist").childNodes.length > 0) {
+      renderCard();
+      renderProgress();
+    }
   }
 
   // ---- 判定 ----
@@ -509,16 +624,20 @@
     const it = session.items[current];
     const meta = $("card-meta");
     clear(meta);
-    const parts = ["問 " + (current + 1), it.kind === "real" ? "実クエリ" : "評価セット", "問われた時点 " + localTime(it.asked_at)];
+    const parts = [
+      "問 " + (current + 1),
+      it.kind === "real" ? pick("今週の問い", "実クエリ") : pick("確かめ用の問い", "評価セット"),
+      pick("調べた日時 ", "問われた時点 ") + localTime(it.asked_at),
+    ];
     parts.forEach((p, i) => {
       if (i > 0) meta.appendChild(h("span", { "aria-hidden": "true" }, "·"));
       meta.appendChild(h("span", null, p));
     });
     if (it.filters && it.filters.scope) {
       meta.appendChild(h("span", { "aria-hidden": "true" }, "·"));
-      meta.appendChild(h("span", null, "scope " + it.filters.scope));
+      meta.appendChild(h("span", null, pick("範囲 ", "scope ") + it.filters.scope));
     }
-    if (it.differs) meta.appendChild(h("span", { class: "tag tag-accent" }, "上位が違う"));
+    if (it.differs) meta.appendChild(h("span", { class: "tag tag-accent" }, pick("2 つの並べ方で上位が違う", "上位が違う")));
     $("card-query").textContent = it.query;
 
     const ul = $("results");
@@ -548,7 +667,7 @@
 
       const metaRow = h("p", { class: "result-meta" }, [
         h("span", null, "作成 " + localDay(c.created_at)),
-        h("span", null, c.provenance),
+        h("span", null, provenanceLabel(c.provenance)),
         h("span", null, c.scope),
         c.stale ? h("span", { class: "tag tag-warning" }, "古い記憶 · " + c.age_days + " 日") : null,
       ]);
@@ -587,7 +706,10 @@
 
   function renderConfirmText() {
     const un = unjudgedCount();
-    const base0 = "判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。";
+    const base0 = pick(
+      "判定は「人の判定」として保存され、2 つの並べ方のどちらが良かったかの集計に加わります。確定したあとは直せません。",
+      "判定は評価セットに「人の判定」として書き込まれ、インターリービングの勝ち負けが集計に加わります。確定したあとは直せません。",
+    );
     $("confirm-text").textContent = base0 + (un > 0 ? "未判定の " + un + " 問は、付けた分だけを書き込みます (何も付けていない問いは判定なしとして扱います)。" : "");
   }
 
@@ -693,6 +815,9 @@
       dlg.close();
       submit();
     });
+    for (const b of document.querySelectorAll(".mode-btn")) {
+      b.addEventListener("click", () => setMode(b.getAttribute("data-mode")));
+    }
     $("prev-q").addEventListener("click", () => goTo(current - 1, true));
     $("next-q").addEventListener("click", () => {
       if (current === session.items.length - 1) {
@@ -707,6 +832,7 @@
   // ---- 起動 ----
   async function start() {
     wire();
+    applyMode();
     setSaveState("idle");
     if (sessionId === "" || token === "") {
       showNotice("URL にセッションの id か合言葉がありません。トーストか sm feedback が開いた URL をそのまま使ってください。");
@@ -737,12 +863,8 @@
 
     $("notice").hidden = true;
     $("app").hidden = false;
-    renderHeader(data);
-    const hist = data.dashboard.history || [];
-    renderNdcg(hist);
-    renderGuard(hist);
-    renderInterleave(hist, data.dashboard.interleave);
-    renderCreated(data.dashboard.created_dist);
+    lastData = data;
+    renderAll(data);
 
     if (session.items.length === 0) {
       $("card").hidden = true;
