@@ -10,7 +10,7 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 - **リポジトリルート** (以下 `<ROOT>`): 環境変数 `SHARED_MEMORY_ROOT`。Windows 以外では指定を必須とする。Windows で指定が無ければ `C:\Users\owner\dev\shared-memory`。
 - CLI: `pnpm --dir <ROOT> sm import <file> --dry-run` (検証のみ) → 承認後 `pnpm --dir <ROOT> sm import <file>`。
   - `pnpm --dir` で実行すると CLI の作業ディレクトリが `<ROOT>` になる。**JSONL は必ず絶対パスで渡す** (相対パスは `<ROOT>` 基準で解釈される)。
-  - 必要なら `--source-agent <claude|codex|kimi|grok|human>` で、行に `source_agent` が無いときの既定値を指定できる。
+  - 必要なら `--source-agent <claude|codex|kimi|grok|harness2|human>` で、行に `source_agent` が無いときの既定値を指定できる。
 - 候補の JSONL は、知識の保存先 (`memories_dir` の 1 つ上のフォルダ、以下 `<STORE>`) の `import\<日時>.jsonl` に書く。`memories_dir` は `<ROOT>\config.local.yaml` (無ければ `<ROOT>\config.yaml`) で確かめる。例: `...\AI\knowledge-base\import\20261010-143000.jsonl`
 
 ## 手順
@@ -36,7 +36,7 @@ description: ファイル・フォルダ・貼り付けたテキスト・会話�
 | `scope` | ○ | `global` / `project:<名前>` / `repo:<名前>` |
 | `kind` | ○ | `episodic` / `semantic` |
 | `provenance` | | `human_confirmed` / `agent_verified` / `agent_inferred`。省略時 `agent_verified` |
-| `source_agent` | | `human` / `claude` / `codex` / `kimi` / `grok`。省略時は `--source-agent`、それも無ければエラー |
+| `source_agent` | | `human` / `claude` / `codex` / `kimi` / `grok` / `harness2`。省略時は `--source-agent`、それも無ければエラー |
 | `supersedes` | | 置き換える既存メモリの `id` (ULID)。存在しない id はエラー |
 | `symbol_ref` | | 関連するコードのシンボル (例 `src/auth/session.ts/refreshToken`) |
 | `tags` | | 文字列の配列 |
