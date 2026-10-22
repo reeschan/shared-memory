@@ -571,7 +571,7 @@ MCP の `search` と `get`、CLI の `search` は、統計と同じ SQLite (`sta
 | `scope` | 必須 | `global` / `project:<名前>` / `repo:<名前>` |
 | `kind` | 必須 | `episodic` (出来事) / `semantic` (知識) |
 | `provenance` | 必須 | `human_confirmed` / `agent_verified` / `agent_inferred` |
-| `source_agent` | 必須 | `human` / `claude` / `codex` / `kimi` / `grok` |
+| `source_agent` | 必須 | `human` / `claude` / `codex` / `kimi` / `grok` / `harness2` |
 | `created_at` | 必須 | 作成日 (ISO 8601) |
 | `supersedes` | 任意 | 置き換える元メモリの `id` |
 | `symbol_ref` | 任意 | Serena の `name_path` (コード関連のメモリのみ) |

@@ -101,7 +101,7 @@ eval:
 
 ## 2. front matter と `frontmatter.ts`
 
-- 定数: `KINDS = ["episodic","semantic"]`, `PROVENANCES = ["human_confirmed","agent_verified","agent_inferred"]`, `SOURCE_AGENTS = ["human","claude","codex","kimi","grok"]`, `TIERS = ["hot","warm","cold","archive"]` (すべて `as const`)。対応する型 `Kind` `Provenance` `SourceAgent` `Tier`。
+- 定数: `KINDS = ["episodic","semantic"]`, `PROVENANCES = ["human_confirmed","agent_verified","agent_inferred"]`, `SOURCE_AGENTS = ["human","claude","codex","kimi","grok","harness2"]`, `TIERS = ["hot","warm","cold","archive"]` (すべて `as const`)。対応する型 `Kind` `Provenance` `SourceAgent` `Tier`。
 - `export type MemoryMeta = { id; title; scope; kind; provenance; source_agent; created_at; supersedes?; symbol_ref?; tags?: string[] }` (文字列型は上の型を使う)。
 - `export type Memory = MemoryMeta & { body: string; path: string }`
 - スコープ: `global` / `project:<name>` / `repo:<name>`、`<name>` は `/^[A-Za-z0-9._-]+$/`。

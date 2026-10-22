@@ -78,6 +78,14 @@ test("source_agent grok は受け付ける", () => {
   if (r.ok) assert.equal(r.memory.source_agent, "grok");
 });
 
+test("source_agent harness2 は受け付ける", () => {
+  assert.ok(SOURCE_AGENTS.includes("harness2"));
+  assert.deepEqual(validateMeta({ ...baseMeta(), source_agent: "harness2" }), []);
+  const r = parseMemoryFile(SAMPLE.replace("source_agent: human", "source_agent: harness2"), PATH);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.memory.source_agent, "harness2");
+});
+
 test("ULID でない id はエラー", () => {
   const r = parseMemoryFile(SAMPLE.replace(`id: ${ID}`, "id: not-a-ulid"), PATH);
   assert.equal(r.ok, false);

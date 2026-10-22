@@ -2,7 +2,7 @@ import { parse, stringify } from "yaml";
 
 export const KINDS = ["episodic", "semantic"] as const;
 export const PROVENANCES = ["human_confirmed", "agent_verified", "agent_inferred"] as const;
-export const SOURCE_AGENTS = ["human", "claude", "codex", "kimi", "grok"] as const;
+export const SOURCE_AGENTS = ["human", "claude", "codex", "kimi", "grok", "harness2"] as const;
 export const TIERS = ["hot", "warm", "cold", "archive"] as const;
 
 export type Kind = (typeof KINDS)[number];

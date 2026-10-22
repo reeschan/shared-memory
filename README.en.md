@@ -561,7 +561,7 @@ Each memory is `memories/<scope>/<id>.md` with YAML front matter and a body. The
 | `scope` | Required | `global` / `project:<name>` / `repo:<name>` |
 | `kind` | Required | `episodic` (an event) / `semantic` (knowledge) |
 | `provenance` | Required | `human_confirmed` / `agent_verified` / `agent_inferred` |
-| `source_agent` | Required | `human` / `claude` / `codex` / `kimi` / `grok` |
+| `source_agent` | Required | `human` / `claude` / `codex` / `kimi` / `grok` / `harness2` |
 | `created_at` | Required | Creation date (ISO 8601) |
 | `supersedes` | Optional | `id` of the memory this one replaces |
 | `symbol_ref` | Optional | Serena `name_path` (code-related memories only) |
