@@ -6,7 +6,7 @@
 
 <a href="docs/architecture/architecture-light.svg"><picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg">
-  <img src="docs/architecture/architecture-light.svg" width="100%" alt="shared-memory のアーキテクチャ図。上から順に、Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送る。MCP サーバーと CLI は packages/core を共有し、定期実行 (タスクスケジューラ / launchd / systemd) が CLI の decay を毎日、gc を毎週起動する。Windows では週 1 回の SharedMemory-Eval が sm eval (rescore のガードを含む評価) と sm feedback を走らせ、トーストがガードの判定とフィードバックの画面の URL を利用者に知らせる。利用者はブラウザーで MCP サーバーの /feedback の画面を開き、週 1 回の判定を送る。アプリはデータ (Markdown が唯一の正、OpenSearch + Sudachi が派生インデックスで _meta に埋め込みの指紋を持つ、SQLite がアクセス統計と検索ログ、eval.dir の評価のディレクトリが評価セット・履歴・セッション・レポート) を読み書きし、ローカルのモデル (埋め込みの既定の Ollama、任意の TEI リランカー) を呼ぶ。設定で明示したときだけ、外部の OpenAI 互換の埋め込み API やリランク API に本文を送る。Markdown は開発者が差分を見てコミットし、GitHub に push する。">
+  <img src="docs/architecture/architecture-light.svg" width="100%" alt="shared-memory のアーキテクチャ図。上から順に、Claude Code・Codex・Kimi Code が 127.0.0.1 の MCP サーバーに search / get / write を送る。MCP サーバーと CLI は packages/core を共有し、定期実行 (タスクスケジューラ / launchd / systemd) が CLI の decay を毎日、gc を毎週起動する。Windows では週 1 回の SharedMemory-Eval が sm eval (rescore のガードを含む評価) と sm feedback を走らせ、トーストがガードの判定とフィードバックの画面の URL を利用者に知らせる。利用者はブラウザーで MCP サーバーの /feedback の画面を開き、週 1 回の判定を送る。アプリはデータ (Markdown が唯一の正、OpenSearch + Sudachi が派生インデックスで _meta に埋め込みの指紋を持つ、SQLite がアクセス統計と検索ログ、eval.dir の評価のディレクトリが評価セット・履歴・セッション・レポート) を読み書きし、ローカルのモデル (埋め込みの既定の Ollama、任意の TEI リランカー) を呼ぶ。設定で明示したときだけ、外部の OpenAI 互換の埋め込み API やリランク API に本文を送る。Markdown は開発者が差分を見てコミットし、GitHub に push する。サーバー PC に集約するときは、クライアント PC の publish-code.mjs が変わったコードを SSH で配布先へ送り、サーバー PC の SharedMemory-Deploy タスク (deploy-code.ps1) が反映して MCP サーバーを再起動する。">
 </picture></a>
 
 図をクリックすると原寸で開く。SVG: [ライト](docs/architecture/architecture-light.svg) / [ダーク](docs/architecture/architecture-dark.svg)
@@ -26,7 +26,7 @@
 - `packages/indexer` … CLI (`pnpm sm <command>`)
 - `packages/mcp-server` … MCP サーバー (search / get / write)
 - `skills/` … エージェント向け Skill (`knowledge-import`、`mcp-setup`)。Windows 以外では、どちらも使う前に `SHARED_MEMORY_ROOT` にリポジトリの絶対パスを設定する
-- `scripts/` … MCP サーバーの起動スクリプトなど
+- `scripts/` … MCP サーバーの起動、タスクの登録、コードの配布 (`publish-code.mjs` / `deploy-code.ps1`) のスクリプト
 - `config.yaml` … 埋め込み・リランク・重み・半減期などの設定
 - `.cache/` … 埋め込みキャッシュ (Git 管理しない)
 
@@ -360,7 +360,7 @@ rerank:
 
 OpenSearch・Ollama・MCP サーバーを 1 台 (以下サーバー PC) だけで動かし、ほかの PC (以下クライアント PC) のエージェントからは SSH のポート転送で使うこともできる。MCP サーバーは `mcp.host` がループバック限定で `Host` ヘッダーも検査するので、LAN に直接公開せず、クライアント PC の `127.0.0.1:7820` をサーバー PC の `127.0.0.1:7820` へ同じポート番号で転送する。クライアント PC のエージェントの登録は `http://127.0.0.1:7820/mcp` のまま変えなくてよい。
 
-サーバー集約構成と、サーバー PC のタスク登録 (`register-tasks.ps1`) は Windows のサーバー PC 限定。macOS / Linux はクライアント側だけで使う。
+サーバー集約構成と、そのコードの自動配布 (`publish-code.mjs`・`deploy-code.ps1`)、サーバー PC のタスク登録 (`register-tasks.ps1`) は Windows のサーバー PC 限定。macOS / Linux はクライアント側だけで使う。
 
 ```bash
 ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -L 127.0.0.1:7820:127.0.0.1:7820 <user>@<サーバー PC>
@@ -427,6 +427,22 @@ SSH 越しにサーバー PC を設定するときの注意:
 - SSH セッションから起動したプロセスは切断時に終わる。Docker Desktop や Ollama などは、対話ログオンのタスクから起動する。
 - SSH セッションからは Windows の資格情報ストアを使えないため、`docker compose build` がベースイメージを取得できないことがある。サーバー PC で直接ビルドするか、ほかの PC で `docker save` したイメージを `docker load` する。
 - `memories_dir` が同期フォルダー (Proton Drive など) にあり、オンラインのみのファイルがあると、SSH セッションからは開けない。そのフォルダーを「常にこのデバイスに保持」にしておく。
+
+### コードの配布
+
+クライアント PC で編集した shared-memory のコードを、サーバー PC へ届けて反映する。この節の手順は Windows のサーバー PC でのみ使う。
+
+1. クライアント PC で `node scripts/publish-code.mjs --ssh <user>@<サーバー PC> --remote-dir <サーバー PC 上の配布先>` を実行する。Git が追跡するファイルと、ignore されていない未追跡ファイルのうち、サーバー PC の `<配布先>/manifest.json` と比べて変わったものを tar にまとめて scp し、相手側の `<配布先>/files/` に展開する。全ファイルのハッシュを書いた `manifest.json` を最後に置き換え、`SharedMemory-Deploy` タスクを起動する。`node_modules`・`state`・`.cache`・`.env`・`config.local.yaml` は配らない。`--force` で全ファイルを送り直す。
+2. サーバー PC の `scripts/deploy-code.ps1 -SourceDir <配布先>` が、`manifest.json` のハッシュと中身が揃っているのを確かめてから作業フォルダーへ反映する。依存 (`package.json`・`pnpm-lock.yaml` など) が変わっていれば `pnpm install --frozen-lockfile` を、実行に関わるファイル (`packages/`・`config.yaml` など) が変わっていれば MCP サーバーの再起動を行う。再起動して応答しなければ元に戻し、その版は再試行しない。`opensearch/` と `docker-compose.yml` の変更は反映するだけなので、イメージの再ビルドやインデックスの作り直しは手で行う。
+
+```powershell
+# サーバー PC: ログオン時と 5 分おきに反映を確認するタスク SharedMemory-Deploy を登録する
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-code.ps1 -SourceDir <配布先> -Register
+```
+
+クライアント PC では、Claude Code の hook (`PostToolUse` の `Write|Edit|MultiEdit|NotebookEdit` と `SessionEnd`) から同じコマンドを呼ぶと、このリポジトリを編集するたびに配られる (hook からの呼び出しは配布を切り離してすぐに戻る)。ほかのエージェントや手で編集した分は、同じコマンドを 10 分おきに実行するタスクで拾う。ログはそれぞれ `.cache/logs/publish-code.log` と `.cache/logs/deploy-code.log`、反映前のファイルはサーバー PC の `.cache/deploy/backup/` に直近 5 回分を残す。
+
+SSH の代わりに、共有フォルダーなどこの PC から直接書けるフォルダーへ送ることもできる (`--dest <配布先> [--trigger-ssh <user>@<サーバー PC>]`)。
 
 ## CLI コマンド
 

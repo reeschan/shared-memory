@@ -6,7 +6,7 @@ A local RAG that gives several AI agents (Claude Code / Codex / Kimi) and you a 
 
 <a href="docs/architecture/architecture-light.svg"><picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/architecture-dark.svg">
-  <img src="docs/architecture/architecture-light.svg" width="100%" alt="Architecture of shared-memory. From the top: Claude Code, Codex and Kimi Code send search / get / write to the MCP server on 127.0.0.1. The MCP server and the CLI share packages/core, and scheduled jobs (Task Scheduler / launchd / systemd) start the CLI's decay daily and gc weekly. On Windows, the weekly SharedMemory-Eval task runs sm eval (evaluation including the rescore guard) and sm feedback, and a toast tells the user the guard result and the URL of the feedback screen. The user opens the MCP server's /feedback screen in a browser and submits the weekly judgments. The apps read and write the data (Markdown as the single source of truth, OpenSearch + Sudachi as the derived index holding the embedding fingerprint in _meta, SQLite for access statistics and search logs, and the evaluation directory eval.dir for the evaluation set, history, sessions and reports) and call local models (Ollama for embeddings by default, an optional TEI reranker). Text is sent to an external OpenAI-compatible embedding or rerank API only when the configuration says so explicitly. The developer reviews the Markdown diff, commits it and pushes it to GitHub.">
+  <img src="docs/architecture/architecture-light.svg" width="100%" alt="Architecture of shared-memory. From the top: Claude Code, Codex and Kimi Code send search / get / write to the MCP server on 127.0.0.1. The MCP server and the CLI share packages/core, and scheduled jobs (Task Scheduler / launchd / systemd) start the CLI's decay daily and gc weekly. On Windows, the weekly SharedMemory-Eval task runs sm eval (evaluation including the rescore guard) and sm feedback, and a toast tells the user the guard result and the URL of the feedback screen. The user opens the MCP server's /feedback screen in a browser and submits the weekly judgments. The apps read and write the data (Markdown as the single source of truth, OpenSearch + Sudachi as the derived index holding the embedding fingerprint in _meta, SQLite for access statistics and search logs, and the evaluation directory eval.dir for the evaluation set, history, sessions and reports) and call local models (Ollama for embeddings by default, an optional TEI reranker). Text is sent to an external OpenAI-compatible embedding or rerank API only when the configuration says so explicitly. The developer reviews the Markdown diff, commits it and pushes it to GitHub. When the server runs on a single PC, publish-code.mjs on a client PC sends changed code over SSH to a drop folder, and the SharedMemory-Deploy task (deploy-code.ps1) on the server PC applies it and restarts the MCP server.">
 </picture></a>
 
 Click the diagram to open it at full size. SVG: [light](docs/architecture/architecture-light.svg) / [dark](docs/architecture/architecture-dark.svg)
@@ -26,7 +26,7 @@ For the design details, see:
 - `packages/indexer` is the CLI (`pnpm sm <command>`)
 - `packages/mcp-server` is the MCP server (search / get / write)
 - `skills/` contains Skills for agents (`knowledge-import`, `mcp-setup`). Outside Windows, set `SHARED_MEMORY_ROOT` to the absolute path of the repository before using either
-- `scripts/` contains scripts such as the one that starts the MCP server
+- `scripts/` contains scripts that start the MCP server, register tasks and deploy code (`publish-code.mjs` / `deploy-code.ps1`)
 - `config.yaml` holds settings for embeddings, reranking, weights, half-life and so on
 - `.cache/` is the embedding cache (not tracked by Git)
 
@@ -360,7 +360,7 @@ rerank:
 
 You can run OpenSearch, Ollama and the MCP server on one machine (the server PC) and let agents on other PCs (client PCs) use it through SSH port forwarding. The MCP server binds only to loopback via `mcp.host` and also checks the `Host` header, so do not expose it on the LAN. Instead, forward `127.0.0.1:7820` on the client PC to `127.0.0.1:7820` on the server PC, keeping the same port number. Agents on the client PC can keep `http://127.0.0.1:7820/mcp` as their endpoint.
 
-The server-PC setup and task registration on the server PC (`register-tasks.ps1`) are Windows-only. macOS / Linux are supported only as clients.
+The server-PC setup, its automatic code deployment (`publish-code.mjs` and `deploy-code.ps1`) and task registration on the server PC (`register-tasks.ps1`) are Windows-only. macOS / Linux are supported only as clients.
 
 ```bash
 ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -L 127.0.0.1:7820:127.0.0.1:7820 <user>@<server PC>
@@ -427,6 +427,22 @@ Notes for configuring the server PC over SSH:
 - Processes started from an SSH session end when you disconnect. Start Docker Desktop, Ollama and the like from tasks that run under an interactive logon.
 - An SSH session cannot use the Windows credential store, so `docker compose build` may fail to pull base images. Build directly on the server PC, or `docker save` the image on another PC and `docker load` it.
 - If `memories_dir` is in a synced folder (Proton Drive and so on) with online-only files, they cannot be opened from an SSH session. Mark that folder as "Always keep on this device".
+
+### Code deployment
+
+Deploy shared-memory code edited on a client PC to the server PC and apply it there. The steps in this section are used only on a Windows server PC.
+
+1. On the client PC, run `node scripts/publish-code.mjs --ssh <user>@<server PC> --remote-dir <destination on the server PC>`. Of the files tracked by Git and the untracked files that are not ignored, the ones that differ from the server PC's `<destination>/manifest.json` are packed into a tar, copied with scp, and extracted into `<destination>/files/` on the other side. At the end it replaces `manifest.json`, which lists the hashes of all files, and starts the `SharedMemory-Deploy` task. `node_modules`, `state`, `.cache`, `.env` and `config.local.yaml` are not deployed. `--force` resends all files.
+2. On the server PC, `scripts/deploy-code.ps1 -SourceDir <destination>` checks that the hashes in `manifest.json` match the contents, then applies them to the working folder. If dependencies (`package.json`, `pnpm-lock.yaml` and so on) changed, it runs `pnpm install --frozen-lockfile`; if files involved in execution (`packages/`, `config.yaml` and so on) changed, it restarts the MCP server. If the server does not respond after the restart, it reverts and does not retry that version. Changes to `opensearch/` and `docker-compose.yml` are only applied, so rebuild the image and recreate the index by hand.
+
+```powershell
+# Server PC: register the SharedMemory-Deploy task that checks for changes at logon and every 5 minutes
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-code.ps1 -SourceDir <destination> -Register
+```
+
+On the client PC, calling the same command from Claude Code hooks (`PostToolUse` `Write|Edit|MultiEdit|NotebookEdit` and `SessionEnd`) deploys the code every time you edit this repository (calls from hooks detach the deployment and return immediately). Edits by other agents or by hand are picked up by a task that runs the same command every 10 minutes. Logs go to `.cache/logs/publish-code.log` and `.cache/logs/deploy-code.log` respectively, and the files before applying are kept in `.cache/deploy/backup/` on the server PC for the last 5 deployments.
+
+Instead of SSH, you can also send to a folder you can write to directly from this PC, such as a shared folder (`--dest <destination> [--trigger-ssh <user>@<server PC>]`).
 
 ## CLI commands
 

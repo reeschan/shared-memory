@@ -1,0 +1,99 @@
+# 記事用: 忘却曲線 (rescore) を自動で最適化せず、見張る仕組み
+# 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/articles/assets/eval-loop.d2
+# 記事の幅で読めるよう縦向き
+# 実線 = 週 1 回の自動の流れ、破線 = 人が行うこと
+direction: down
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 40
+  }
+}
+
+classes: {
+  svc: {
+    shape: rectangle
+    style: {
+      border-radius: 12
+      font-size: 15
+    }
+  }
+  ext: {
+    shape: image
+    width: 64
+    height: 64
+    label.near: outside-bottom-center
+  }
+  zone: {
+    style.border-radius: 16
+  }
+  auto: {
+    style: {
+      stroke: "#1971c2"
+      stroke-width: 2
+      font-color: "#1971c2"
+    }
+  }
+  human: {
+    style: {
+      stroke: "#e8590c"
+      stroke-width: 2
+      stroke-dash: 4
+      font-color: "#e8590c"
+    }
+  }
+}
+
+agents: "エージェントの\n普段の検索" {
+  class: ext
+  icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+}
+
+user: "利用者" {
+  class: ext
+  icon: https://icons.terrastruct.com/essentials%2F359-users.svg
+}
+
+pc: "ローカル PC" {
+  class: zone
+  direction: down
+
+  log: "検索ログ・get のログ\n(SQLite、90 日)\n評価の読み出しは数えない" {
+    class: svc
+    icon: https://cdn.simpleicons.org/sqlite
+  }
+  sched: "定期実行\n週 1 回" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
+  }
+  eval: "sm eval (ガード)\n本番の設定と一次スコアだけを\n同じ評価セットで測り\n差の 95% 区間を出す" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F092-graph%20bar.svg
+  }
+  toast: "トーストとレポート\n有意に悪い状態が\n2 回続いたら知らせる" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F213-alarm.svg
+  }
+  fb: "フィードバックの画面\n2 つの順位をインターリービングで\n1 つのリストに混ぜる\n(どちら由来かは伏せる)" {
+    class: svc
+  }
+  evalset: "評価セット\n(評価のディレクトリ)\n人の判定が貯まる" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F245-folder.svg
+  }
+  config: "config.yaml\nrescore の式と値は固定" {
+    class: svc
+  }
+
+  sched -> eval {class: auto}
+  evalset -> eval: "問いと正解" {class: auto}
+  eval -> toast {class: auto}
+  log -> fb: "その週の実クエリから\n上位が違う問いを選ぶ" {class: auto}
+  fb -> evalset: "判定を足す" {class: auto}
+}
+
+agents -> pc.log: "search / get" {class: auto}
+pc.toast -> user: "知らせる" {class: human}
+user <-> pc.fb: "役に立つかを判定" {class: human}
+user -> pc.config: "条件がそろったら\n人が承認して変える" {class: human}
