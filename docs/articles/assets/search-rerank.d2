@@ -1,0 +1,112 @@
+# 記事用: 検索の流れ (rerank を rescore より前に置き、古い記憶には印を付ける)
+# 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/articles/assets/search-rerank.d2
+# オレンジの線 = 既定の流れ、紫の線 = rerank が有効なとき、破線 = rerank が無効か失敗したとき
+direction: down
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 40
+  }
+}
+
+classes: {
+  svc: {
+    shape: rectangle
+    style: {
+      border-radius: 12
+      font-size: 15
+    }
+  }
+  ext: {
+    shape: image
+    width: 64
+    height: 64
+    label.near: outside-bottom-center
+  }
+  zone: {
+    style.border-radius: 16
+  }
+  qry: {
+    style: {
+      stroke: "#e8590c"
+      stroke-width: 2
+      font-color: "#e8590c"
+    }
+  }
+  rr: {
+    style: {
+      stroke: "#7048e8"
+      stroke-width: 3
+      font-color: "#7048e8"
+    }
+  }
+  fb: {
+    style: {
+      stroke: "#868e96"
+      stroke-width: 2
+      stroke-dash: 4
+      font-color: "#868e96"
+    }
+  }
+}
+
+agent: "エージェントのクエリ\n(MCP search)" {
+  class: ext
+  icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+}
+
+embed: "Ollama\nQwen3-Embedding-0.6B\nクエリを埋め込む" {
+  class: svc
+  icon: https://cdn.simpleicons.org/ollama/__MONO__
+}
+
+os: "① 一次検索 (OpenSearch)" {
+  class: zone
+  icon: https://cdn.simpleicons.org/opensearch
+  direction: right
+
+  bm25: "BM25\nSudachi で語を区切る\n識別子・固有名に強い" {
+    class: svc
+  }
+  knn: "kNN\nベクトルの近さ\n言い換えに強い" {
+    class: svc
+  }
+  pipe: "min_max で正規化\nBM25 0.4 + kNN 0.6\n= 一次スコア" {
+    class: svc
+  }
+  bm25 -> pipe {class: qry}
+  knn -> pipe {class: qry}
+}
+
+mcp: "MCP サーバー" {
+  class: zone
+  direction: down
+
+  cand: "② 候補を選ぶ\nメモリ単位にまとめ\n一次スコアの上位 20 件\n(rescore の前)" {
+    class: svc
+  }
+  rescore: "rescore (控え)\n× 時間減衰 (半減期 90 日・下限 0.7)\n× アクセス回数 × 出所" {
+    class: svc
+  }
+  fresh: "④ freshness を付ける\n作成からの日数・使われていない日数\n古い記憶なら stale: true" {
+    class: svc
+  }
+  out: "上位 8 件を返す" {
+    class: svc
+  }
+  sarashina: "③ Sarashina3 rerank (外部 API)\nクエリと候補の本文を読んで順位を付け直し\nその順位をそのまま最終の順位にする" {
+    class: svc
+    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+  }
+  cand -> sarashina: "候補 20 件" {class: rr}
+  sarashina -> fresh: "rerank の順位" {class: rr}
+  cand -> rescore: "無効・失敗" {class: fb}
+  rescore -> fresh {class: fb}
+  fresh -> out {class: qry}
+}
+
+agent -> embed: "クエリ" {class: qry}
+embed -> os.knn: "クエリベクトル" {class: qry}
+agent -> os.bm25: "クエリの語" {class: qry}
+os.pipe -> mcp.cand: "一次スコア" {class: qry}

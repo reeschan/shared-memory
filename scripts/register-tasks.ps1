@@ -17,7 +17,8 @@ $ErrorActionPreference = 'Stop'
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $LogDir = Join-Path $Root '.cache\logs'
-$UserId = "$env:USERDOMAIN\$env:USERNAME"
+# SSH セッションでは $env:USERDOMAIN が WORKGROUP になり、タスクの実行ユーザーを解決できないことがあるため、実行中のアカウント名を使う
+$UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 # fnm などのシェルごとの一時ディレクトリ (ジャンクション) を経由している場合は実体側のパスにする
 function Get-NodePath {
@@ -131,14 +132,16 @@ foreach ($t in $Tasks) {
     if ($WhatIf) {
         Write-Output "WhatIf: タスクを${verb}: $($t.Name)"
         Write-Output "  トリガー   : $($t.TriggerText)"
-        Write-Output "  実行       : powershell.exe $argument"
+        Write-Output "  実行       : conhost.exe --headless powershell.exe $argument"
         Write-Output "  作業フォルダ: $Root"
         Write-Output "  ログ       : $logFile"
         Write-Output "  実行ユーザー: $UserId (通常権限)"
         continue
     }
 
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argument -WorkingDirectory $Root
+    # powershell.exe を直接起動すると、-WindowStyle Hidden でも隠れる前にコンソールが一瞬表示される。
+    # conhost.exe --headless を通すとウィンドウを作らずに動く
+    $action = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument ('--headless powershell.exe ' + $argument) -WorkingDirectory $Root
     $trigger = & $t.Trigger
     $principal = New-ScheduledTaskPrincipal -UserId $UserId -LogonType Interactive -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit $t.TimeLimit

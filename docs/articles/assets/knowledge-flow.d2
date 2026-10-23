@@ -1,0 +1,108 @@
+# 記事用: 自分の資料を保管庫に入れ、全部のエージェントで共有する流れ
+# 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/articles/assets/knowledge-flow.d2
+# 記事の幅で読めるよう縦向き
+# 緑の線 = 取り込み、オレンジの線 = エージェントが引く、破線 = 原本をたどる
+direction: down
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 40
+  }
+}
+
+classes: {
+  svc: {
+    shape: rectangle
+    style: {
+      border-radius: 12
+      font-size: 15
+    }
+  }
+  ext: {
+    shape: image
+    width: 64
+    height: 64
+    label.near: outside-bottom-center
+  }
+  zone: {
+    style.border-radius: 16
+  }
+  imp: {
+    style: {
+      stroke: "#2f9e44"
+      stroke-width: 2
+      font-color: "#2f9e44"
+    }
+  }
+  use: {
+    style: {
+      stroke: "#e8590c"
+      stroke-width: 2
+      font-color: "#e8590c"
+    }
+  }
+  ref: {
+    style: {
+      stroke-dash: 4
+    }
+  }
+}
+
+docs: "原本\n設計メモ・手順書・議事録\n(今ある場所のまま)" {
+  class: ext
+  icon: https://icons.terrastruct.com/essentials%2F245-folder.svg
+}
+
+user: "利用者" {
+  class: ext
+  icon: https://icons.terrastruct.com/essentials%2F359-users.svg
+}
+
+store: "共有メモリ (ローカル PC)" {
+  class: zone
+  direction: right
+
+  import: "knowledge-import\n1 事実 1 メモリに分けて\n候補の一覧を作る" {
+    class: svc
+  }
+  md: "Markdown (正本)\nfront matter に\nsource_path / source_sha256" {
+    class: svc
+    icon: https://cdn.simpleicons.org/markdown/__MONO__
+  }
+  os: "OpenSearch\n派生インデックス" {
+    class: svc
+    icon: https://cdn.simpleicons.org/opensearch
+  }
+  mcp: "MCP サーバー\nsearch / get" {
+    class: svc
+    icon: https://cdn.simpleicons.org/modelcontextprotocol/__MONO__
+  }
+  import -> md: "承認したものだけ登録" {class: imp}
+  md -> os: "インデックス" {class: imp}
+  os -> mcp: "ハイブリッド検索" {class: use}
+  md -> mcp: "get (原本のパスも返す)" {class: use}
+}
+
+agents: "どのエージェントからでも" {
+  class: zone
+  direction: right
+
+  claude: Claude Code {
+    class: ext
+    icon: https://cdn.simpleicons.org/anthropic/__MONO__
+  }
+  codex: Codex {
+    shape: hexagon
+    width: 90
+  }
+  kimi: Kimi Code {
+    class: ext
+    icon: https://cdn.simpleicons.org/moonshotai/__MONO__
+  }
+}
+
+docs -> store.import: "資料を渡す" {class: imp}
+user <-> store.import: "候補を見て承認" {class: imp}
+store.mcp <-> agents: "search / get" {class: use}
+agents -> docs: "詳しく知りたいときは\n原本を開く" {class: ref}
