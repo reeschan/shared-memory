@@ -3,7 +3,7 @@
 # 生成: python ~/.claude/skills/arch-diagram/versions/v1.1/scripts/render.py docs/architecture/architecture.d2
 # README の幅 (約 880px) で読めるように、全体を 1 列、枠の中を 2 列の格子にして幅を 1350px ほどに抑え、文字を大きくしている
 # 格子は列の数だけを決めると縦方向に詰める (1 列目を上から埋める)。並べる順を変えるときは注意
-# 上から: エージェントと利用者 → アプリ → ローカルのデータ / モデル → 設定で選ぶ外部 API
+# 上から: エージェント・利用者・コードを配るクライアント PC → アプリ → ローカルのデータ / モデル → 設定で選ぶ外部 API
 # 実線 = 既定で使う流れ、破線 = 任意 (設定で有効にしたときだけ) か非同期・定期
 direction: down
 grid-columns: 1
@@ -61,7 +61,7 @@ classes: {
 
 people: "使う人" {
   class: saas
-  grid-columns: 2
+  grid-columns: 3
   grid-gap: 80
 
   agents: "エージェント" {
@@ -87,9 +87,17 @@ people: "使う人" {
     class: ext
     icon: https://icons.terrastruct.com/essentials%2F359-users.svg
   }
+  dev: "クライアント PC (サーバー集約のとき)" {
+    class: zone
+
+    publish: "コードの配布\nscripts/publish-code.mjs\n編集の hook と 10 分おき" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F245-folder.svg
+    }
+  }
 }
 
-pc: "ローカル PC (127.0.0.1 のみ)" {
+pc: "ローカル PC / サーバー PC (127.0.0.1 のみ)" {
   class: zone
   direction: down
   icon: https://icons.terrastruct.com/tech%2Flaptop.svg
@@ -115,6 +123,10 @@ pc: "ローカル PC (127.0.0.1 のみ)" {
     sched: "定期実行\ndecay 毎日 / gc 毎週\nSharedMemory-Eval 毎週" {
       class: svc
       icon: https://icons.terrastruct.com/essentials%2F273-calendar.svg
+    }
+    deploy: "SharedMemory-Deploy (Windows)\ndeploy-code.ps1 が反映し\nMCP を再起動・失敗で戻す" {
+      class: svc
+      icon: https://icons.terrastruct.com/essentials%2F112-server.svg
     }
   }
 
@@ -187,6 +199,8 @@ outside: "" {
   }
 }
 
+people.dev.publish -> pc.app.deploy: "SSH で配る" {class: opt}
+pc.app.deploy -> pc.app.mcp: "再起動" {class: opt}
 people.agents -> pc.app.mcp: "MCP (Streamable HTTP)" {class: flow}
 people.human <-> pc.app.mcp: "週 1 回の判定" {class: opt}
 pc.app.toast -> people.human: "知らせる" {class: opt}
