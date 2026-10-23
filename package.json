@@ -6,7 +6,7 @@
     "sm": "node packages/indexer/src/cli.ts",
     "mcp": "node packages/mcp-server/src/server.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test --test-reporter=tap \"packages/*/test/!(*.int).test.ts\"",
+    "test": "node --test --test-reporter=tap \"packages/*/test/!(*.int).test.ts\" \"scripts/test/*.test.mjs\"",
     "test:int": "node --test --test-reporter=tap --test-concurrency=1 \"packages/*/test/*.int.test.ts\""
   },
   "devDependencies": {
