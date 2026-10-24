@@ -19,7 +19,7 @@ export type SearchLogEntry = {
   at: string;
   source: LogSource;
   query: string;
-  filters: { scope?: string; kind?: Kind; tags?: string[]; limit?: number };
+  filters: { scope?: string; kind?: Kind; tags?: string[]; limit?: number; include_workspaces?: boolean };
   /** rank は 1 始まり。 */
   results: { id: string; rank: number; score: number }[];
 };
@@ -70,6 +70,7 @@ export class StatsStore {
     if (e.filters.kind !== undefined) filters.kind = e.filters.kind;
     if (e.filters.tags !== undefined) filters.tags = e.filters.tags;
     if (e.filters.limit !== undefined) filters.limit = e.filters.limit;
+    if (e.filters.include_workspaces === true) filters.include_workspaces = true;
     const results = e.results.map((r) => ({ id: r.id, rank: r.rank, score: r.score }));
     this.db
       .prepare("INSERT INTO search_log (at, source, query, filters, results) VALUES (?, ?, ?, ?, ?)")

@@ -119,6 +119,35 @@ test("選び方: 同じ問いは最新にまとまり、上位が違う問い・
   assert.equal(prod.calls.find((x) => x.input.query === "same1")!.asOf.at.toISOString(), "2026-10-20T00:00:00.000Z");
 });
 
+test("ログの include_workspaces は true のときだけ問いの filters に残り、検索の入力にも渡る", async () => {
+  const dir = tmp();
+  const p = fake({ with: SAME, false: SAME, none: SAME });
+  const s = await createFeedbackSession({
+    dir,
+    questions: [],
+    logs: [
+      log("with", "2026-10-19T00:00:00.000Z", { include_workspaces: true }),
+      log("false", "2026-10-18T00:00:00.000Z", { include_workspaces: false }),
+      log("none", "2026-10-17T00:00:00.000Z"),
+    ],
+    production: p.fn,
+    primary: p.fn,
+    supersededAt: new Map(),
+    now: NOW,
+    seed: 1,
+    newId: () => "fb-inc",
+  });
+  const filtersOf = (query: string): unknown => s.items.find((it) => it.query === query)!.filters;
+  assert.deepEqual(filtersOf("with"), { include_workspaces: true });
+  assert.equal(filtersOf("false"), undefined);
+  assert.equal(filtersOf("none"), undefined);
+  assert.deepEqual(p.calls.find((c) => c.input.query === "with")!.input, {
+    query: "with",
+    include_workspaces: true,
+    limit: 10,
+  });
+});
+
 test("選び方: limit (既定 10) を超えない", async () => {
   const dir = tmp();
   const logs = Array.from({ length: 12 }, (_, i) => log(`q${i}`, `2026-10-${String(10 + i).padStart(2, "0")}T00:00:00.000Z`));

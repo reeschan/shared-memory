@@ -5,7 +5,7 @@ import type { Kind } from "./frontmatter.ts";
 import type { Grades } from "./metrics.ts";
 
 export type LabelSource = "agent" | "human";
-export type EvalFilters = { scope?: string; kind?: Kind; tags?: string[] };
+export type EvalFilters = { scope?: string; kind?: Kind; tags?: string[]; include_workspaces?: boolean };
 export type EvalLabel = {
   source: LabelSource;
   /** ISO */
@@ -117,6 +117,7 @@ function normalizeFilters(f?: EvalFilters): EvalFilters {
   if (f.scope !== undefined && f.scope !== "") out.scope = f.scope;
   if (f.kind !== undefined) out.kind = f.kind;
   if (f.tags !== undefined && f.tags.length > 0) out.tags = [...new Set(f.tags)].sort();
+  if (f.include_workspaces === true) out.include_workspaces = true;
   return out;
 }
 
