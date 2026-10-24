@@ -1,11 +1,19 @@
 import type { Config } from "./config.ts";
 import type { Embedder } from "./embed.ts";
 import { computeFreshness, type Freshness } from "./freshness.ts";
-import type { Kind, Provenance, Tier } from "./frontmatter.ts";
+import { WORKSPACE_SCOPE_PREFIX, type Kind, type Provenance, type Tier } from "./frontmatter.ts";
 import type { OpenSearchClient } from "./opensearch.ts";
 import type { Reranker, RerankHit } from "./rerank.ts";
 
-export type SearchInput = { query: string; scope?: string; kind?: Kind; tags?: string[]; limit?: number };
+export type SearchInput = {
+  query: string;
+  scope?: string;
+  kind?: Kind;
+  tags?: string[];
+  limit?: number;
+  /** scope を付けない検索に作業空間 (`project:work.*`) を含める。scope があるときは見ない */
+  include_workspaces?: boolean;
+};
 
 export type SearchResult = {
   id: string;
@@ -50,6 +58,10 @@ export function buildFilter(cfg: Config, input: SearchInput, asOf?: AsOf): objec
     asOf === undefined
       ? [{ term: { is_superseded: false } }, { terms: { tier: cfg.search.searchable_tiers } }]
       : [{ terms: { tier: cfg.search.searchable_tiers } }, { range: { created_at: { lte: asOf.at.toISOString() } } }];
+  // scope を付けず、include_workspaces も true でない検索は作業空間を除く
+  if (input.scope === undefined && input.include_workspaces !== true) {
+    filter.push({ bool: { must_not: [{ prefix: { scope: WORKSPACE_SCOPE_PREFIX } }] } });
+  }
   if (input.scope !== undefined) filter.push({ term: { scope: input.scope } });
   if (input.kind !== undefined) filter.push({ term: { kind: input.kind } });
   if (input.tags !== undefined && input.tags.length > 0) filter.push({ terms: { tags: input.tags } });

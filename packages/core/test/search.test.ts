@@ -1,12 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { loadConfig, type Config } from "../src/config.ts";
+import { WORKSPACE_SCOPE_PREFIX } from "../src/frontmatter.ts";
 import { buildFilter, buildHybridQuery, primaryOnlyConfig, rescore, supersededAtMap } from "../src/search.ts";
 
 const cfg = loadConfig();
 const now = new Date("2026-10-10T00:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (d: number) => new Date(now.getTime() - d * DAY).toISOString();
+
+/** scope を付けない検索に入る、作業空間を除く条件 */
+const NO_WORKSPACES = { bool: { must_not: [{ prefix: { scope: WORKSPACE_SCOPE_PREFIX } }] } };
+const hasNoWorkspaces = (filter: object[]): boolean => filter.some((c) => isDeepStrictEqual(c, NO_WORKSPACES));
 
 /** rescore のテスト用。PC ごとの設定に依存しないよう、係数と半減期を明示的に上書きする */
 function rescoreCfg(decay_floor: number, access_weight: number): Config {
@@ -23,11 +29,12 @@ function rescoreCfg(decay_floor: number, access_weight: number): Config {
 const soft = rescoreCfg(0.7, 0.2);
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-12, `${a} != ${b}`);
 
-test("(a) buildFilter: 未指定なら 2 条件、全部指定で 5 条件", () => {
+test("(a) buildFilter: 未指定なら 3 条件 (作業空間の除外を含む)、全部指定で 5 条件", () => {
   const f0 = buildFilter(cfg, { query: "x" });
   assert.deepEqual(f0, [
     { term: { is_superseded: false } },
     { terms: { tier: cfg.search.searchable_tiers } },
+    NO_WORKSPACES,
   ]);
   const f1 = buildFilter(cfg, { query: "x", scope: "project:demo", kind: "semantic", tags: ["a", "b"] });
   assert.equal(f1.length, 5);
@@ -152,6 +159,7 @@ test("(k) buildFilter: asOf があれば is_superseded の term を外し、crea
   assert.deepEqual(f0, [
     { terms: { tier: cfg.search.searchable_tiers } },
     { range: { created_at: { lte: "2026-09-01T12:34:56.000Z" } } },
+    NO_WORKSPACES,
   ]);
   const f1 = buildFilter(cfg, { query: "x", scope: "project:demo", kind: "semantic", tags: ["a"] }, asOf);
   assert.deepEqual(f1.slice(2), [
@@ -164,6 +172,39 @@ test("(k) buildFilter: asOf があれば is_superseded の term を外し、crea
   const q = buildHybridQuery(cfg, { query: "x" }, [0.1], asOf) as any;
   assert.deepEqual(q.query.hybrid.queries[0].bool.filter, f0);
   assert.deepEqual(q.query.hybrid.queries[1].knn.embedding.filter, { bool: { filter: f0 } });
+});
+
+test("(n) buildFilter: scope なしでは作業空間の除外が入る。include_workspaces: true なら入らない", () => {
+  const f0 = buildFilter(cfg, { query: "x" });
+  assert.deepEqual(f0.at(-1), NO_WORKSPACES);
+  assert.equal(hasNoWorkspaces(f0), true);
+
+  const f1 = buildFilter(cfg, { query: "x", include_workspaces: true });
+  assert.deepEqual(f1, [
+    { term: { is_superseded: false } },
+    { terms: { tier: cfg.search.searchable_tiers } },
+  ]);
+  assert.equal(hasNoWorkspaces(f1), false);
+});
+
+test("(o) buildFilter: scope 指定 (作業空間でも global でも) では除外が入らず、scope の term が入る", () => {
+  for (const scope of ["project:work.shared-memory.main.W-001", "global"]) {
+    const f0 = buildFilter(cfg, { query: "x", scope });
+    assert.equal(hasNoWorkspaces(f0), false);
+    assert.deepEqual(f0.at(-1), { term: { scope } });
+    // scope があるときは include_workspaces を見ない
+    assert.deepEqual(buildFilter(cfg, { query: "x", scope, include_workspaces: true }), f0);
+  }
+});
+
+test("(p) buildFilter: asOf 付きの scope なしでも作業空間の除外が入る", () => {
+  const asOf = { at: new Date("2026-09-01T12:34:56.000Z"), supersededAt: new Map<string, string>() };
+  const f0 = buildFilter(cfg, { query: "x" }, asOf);
+  assert.deepEqual(f0.at(-1), NO_WORKSPACES);
+  assert.equal(hasNoWorkspaces(f0), true);
+  // scope を明示すれば asOf 付きでも除外は入らない
+  const f1 = buildFilter(cfg, { query: "x", scope: "project:work.shared-memory.main.W-001" }, asOf);
+  assert.equal(hasNoWorkspaces(f1), false);
 });
 
 test("(l) primaryOnlyConfig: decay_floor 1・access_weight 0・provenance_factor 全 1 を返し、元の cfg は変えない", () => {
