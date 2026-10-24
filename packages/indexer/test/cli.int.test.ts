@@ -9,7 +9,14 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { serializeMemory, OpenSearchClient, StatsStore, loadConfig, type MemoryMeta } from "@shared-memory/core";
+import {
+  serializeMemory,
+  scopeToDir,
+  OpenSearchClient,
+  StatsStore,
+  loadConfig,
+  type MemoryMeta,
+} from "@shared-memory/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const cliPath = path.join(repoRoot, "packages/indexer/src/cli.ts");
@@ -72,6 +79,21 @@ const MEMORIES = [
   ),
 ];
 const OLD = MEMORIES[3]!;
+
+// 作業空間 (project:work.*) のメモリ。scope なしの search では既定で出ない
+const WORKSPACE_MEMORY: { meta: MemoryMeta; body: string } = {
+  meta: {
+    id: "01JA0000000000000000000005",
+    title: "カレーの仕込み",
+    scope: "project:work.pbi014.main.W-1",
+    kind: "episodic",
+    provenance: "agent_verified",
+    source_agent: "claude",
+    created_at: daysAgo(5),
+  },
+  body: "カレーの仕込みは玉ねぎを飴色になるまで炒めるところまで進んだ。明日は肉を煮込む。",
+};
+const ALL_MEMORIES = [...MEMORIES, WORKSPACE_MEMORY];
 const statsPath = (): string => path.join(root, "state", "stats.sqlite");
 
 function countCliSearchLogs(): number {
@@ -108,8 +130,10 @@ before(async () => {
   await mkdir(path.join(root, "memories", "global"), { recursive: true });
   await writeFile(path.join(root, "pnpm-workspace.yaml"), "packages: []\n");
   await writeFile(path.join(root, "config.yaml"), stringify(cfg));
-  for (const m of MEMORIES) {
-    await writeFile(path.join(root, "memories", "global", `${m.meta.id}.md`), serializeMemory(m.meta, m.body));
+  for (const m of ALL_MEMORIES) {
+    const dir = path.join(root, "memories", scopeToDir(m.meta.scope));
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, `${m.meta.id}.md`), serializeMemory(m.meta, m.body));
   }
 });
 
@@ -130,8 +154,8 @@ test("index --json: scanned がメモリの数", () => {
   const r = run(["index", "--json"]);
   assert.equal(r.status, 0, r.stderr);
   const out = JSON.parse(r.stdout) as { scanned: number; upserted: number };
-  assert.equal(out.scanned, MEMORIES.length);
-  assert.equal(out.upserted, MEMORIES.length);
+  assert.equal(out.scanned, ALL_MEMORIES.length);
+  assert.equal(out.upserted, ALL_MEMORIES.length);
 });
 
 test("search --json: 1 件目が期待どおりで、各要素に freshness がある", () => {
@@ -171,6 +195,30 @@ test("search の後、state_db の search_log に source cli の行が 1 行増�
   const r = run(["search", "コーヒー", "--json"]);
   assert.equal(r.status, 0, r.stderr);
   assert.equal(countCliSearchLogs(), before + 1);
+});
+
+test("search: 作業空間は既定で出ず、--include-workspaces と --scope で出る", () => {
+  const query = "カレーの仕込み";
+
+  // scope も --include-workspaces も無ければ、作業空間のメモリは出ない
+  const plain = run(["search", query, "--json", "--limit", "10"]);
+  assert.equal(plain.status, 0, plain.stderr);
+  const plainOut = JSON.parse(plain.stdout) as { id: string }[];
+  assert.ok(!plainOut.some((e) => e.id === WORKSPACE_MEMORY.meta.id), plain.stdout);
+
+  // --include-workspaces を付けると出る
+  const withWs = run(["search", query, "--include-workspaces", "--json", "--limit", "10"]);
+  assert.equal(withWs.status, 0, withWs.stderr);
+  const withWsOut = JSON.parse(withWs.stdout) as { id: string; scope: string }[];
+  assert.ok(withWsOut.some((e) => e.id === WORKSPACE_MEMORY.meta.id), withWs.stdout);
+
+  // --scope に作業空間を明示すると、その作業空間のメモリだけが出る
+  const scoped = run(["search", query, "--scope", WORKSPACE_MEMORY.meta.scope, "--json", "--limit", "10"]);
+  assert.equal(scoped.status, 0, scoped.stderr);
+  const scopedOut = JSON.parse(scoped.stdout) as { id: string; scope: string }[];
+  assert.ok(scopedOut.length > 0, scoped.stdout);
+  assert.ok(scopedOut.every((e) => e.scope === WORKSPACE_MEMORY.meta.scope), scoped.stdout);
+  assert.ok(scopedOut.some((e) => e.id === WORKSPACE_MEMORY.meta.id), scoped.stdout);
 });
 
 test("reindex --json: index が -r を含む新しい名前", () => {
