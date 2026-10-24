@@ -95,6 +95,17 @@ test("questionKey は前後・連続の空白と大小文字の違いを同じ�
   assert.notEqual(questionKey("foo bar"), questionKey("foobar"));
 });
 
+test("include_workspaces は true のときだけ questionKey を変え、評価セットにも残る", async () => {
+  assert.notEqual(questionKey("x", { include_workspaces: true }), questionKey("x"));
+  assert.equal(questionKey("x", { include_workspaces: false }), questionKey("x"));
+  assert.equal(questionKey("x", {}), questionKey("x"));
+
+  const dir = tmp();
+  const qs = [q({ qid: "s01", filters: { include_workspaces: true } })];
+  await writeEvalSet(dir, qs);
+  assert.deepEqual(await readEvalSet(dir), qs);
+});
+
 test("fromLabEvalJsonl は lab の形を agent のラベルの EvalQuestion にする", () => {
   const text = [
     JSON.stringify({ qid: "s01", set: "synthetic", query: "ダミー A", relevant: { DUMMY1: 2, DUMMY2: 1 } }),

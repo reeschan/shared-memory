@@ -152,6 +152,20 @@ test("logSearch は undefined のフィルタを保存しない", () => {
   });
 });
 
+test("logSearch は include_workspaces が true のときだけ filters に残す", () => {
+  withTmp((dir) => {
+    const s = new StatsStore(join(dir, "s.sqlite"));
+    s.logSearch(searchEntry("2026-01-01T00:00:00.000Z", "with", { include_workspaces: true }));
+    s.logSearch(searchEntry("2026-01-01T00:00:01.000Z", "false", { include_workspaces: false }));
+    s.logSearch(searchEntry("2026-01-01T00:00:02.000Z", "none"));
+    const { searches } = s.readLogs("2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z");
+    assert.deepEqual(searches[0]!.filters, { include_workspaces: true });
+    assert.deepEqual(searches[1]!.filters, {});
+    assert.deepEqual(searches[2]!.filters, {});
+    s.close();
+  });
+});
+
 test("readLogs は from 以上 to 未満の行を時刻の昇順で、search と get を別々に返す", () => {
   withTmp((dir) => {
     const s = new StatsStore(join(dir, "s.sqlite"));
