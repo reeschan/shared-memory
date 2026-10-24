@@ -12,6 +12,7 @@ import {
   PROVENANCES,
   SOURCE_AGENTS,
   StatsStore,
+  WORKSPACE_SCOPE_PREFIX,
   checkEmbeddingCompat,
   computeFreshness,
   ensureSetup,
@@ -44,6 +45,7 @@ const SEARCH_DESC = [
   "Search the shared memory (notes shared by Claude Code / Codex / Kimi / Grok Bot) with a natural-language question or keywords.",
   "Returns a ranked list of {id, title, excerpt, score, scope, kind, provenance, created_at, freshness}. freshness = {age_days (days since created), idle_days (days since last access), last_accessed_at, stale}.",
   "Use it in two steps: call `search` first, then call `get` with the id of a relevant hit to read the full memory.",
+  `A search without \`scope\` excludes the workspaces (\`${WORKSPACE_SCOPE_PREFIX}*\`); to search them, set \`scope\` to one explicitly or set \`include_workspaces\` to true.`,
   STALE_NOTICE,
   DATA_NOTICE,
 ].join(" ");
@@ -60,6 +62,7 @@ const WRITE_DESC = [
   "Committing the file to Git is done by a human, not by this tool.",
   "Do not include secrets (API keys, tokens, passwords); such content is rejected.",
   "To find what already exists, use `search` then `get`.",
+  `Write progress, handoffs, refs between PBIs and state snapshots to the workspace \`${WORKSPACE_SCOPE_PREFIX}<repo>.<branch>.W-<n>\`, and write to global or repo only knowledge that stays true in other work after this work ends.`,
   DATA_NOTICE,
 ].join(" ");
 
@@ -90,6 +93,12 @@ function buildMcpServer(cfg: Config, deps: Deps, reranker: Reranker | undefined)
         kind: z.enum(KINDS).optional().describe("Filter by kind"),
         tags: z.array(z.string()).optional().describe("Filter by tags (any of)"),
         limit: z.number().int().min(1).max(50).optional().describe("Maximum number of results"),
+        include_workspaces: z
+          .boolean()
+          .optional()
+          .describe(
+            `Also include workspaces (\`${WORKSPACE_SCOPE_PREFIX}*\`) when \`scope\` is not set. Set it to true only when resuming a handoff.`,
+          ),
       },
     },
     async (args) => {
@@ -106,6 +115,7 @@ function buildMcpServer(cfg: Config, deps: Deps, reranker: Reranker | undefined)
           if (args.kind !== undefined) filters.kind = args.kind;
           if (args.tags !== undefined) filters.tags = args.tags;
           if (args.limit !== undefined) filters.limit = args.limit;
+          if (args.include_workspaces === true) filters.include_workspaces = true;
           deps.stats.logSearch({
             at: now.toISOString(),
             source: "mcp",
@@ -167,7 +177,11 @@ function buildMcpServer(cfg: Config, deps: Deps, reranker: Reranker | undefined)
       inputSchema: {
         title: z.string().describe("Short title"),
         content: z.string().describe("Body (Markdown)"),
-        scope: z.string().describe('"global", "project:<name>" or "repo:<name>"'),
+        scope: z
+          .string()
+          .describe(
+            `"global", "project:<name>", "repo:<name>" or a workspace like "${WORKSPACE_SCOPE_PREFIX}<repo>.<branch>.W-<n>"`,
+          ),
         kind: z.enum(KINDS).describe("episodic (what happened) or semantic (facts / how-to)"),
         provenance: z.enum(PROVENANCES).describe("How trustworthy the content is"),
         source_agent: z.enum(SOURCE_AGENTS).describe("Who is writing"),

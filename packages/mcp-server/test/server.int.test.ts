@@ -276,3 +276,46 @@ test("(k) search と get の説明に freshness と stale の案内がある", a
     assert.match(d, /human_confirmed/);
   }
 });
+
+test("(m) search と write の説明に作業空間の案内がある", async () => {
+  const { tools } = await client.listTools();
+  const search = tools.find((t) => t.name === "search");
+  const write = tools.find((t) => t.name === "write");
+  assert.match(search?.description ?? "", /project:work\.\*/);
+  assert.match(search?.description ?? "", /include_workspaces/);
+  assert.match(write?.description ?? "", /project:work\.<repo>\.<branch>\.W-<n>/);
+  assert.match(write?.description ?? "", /global or repo/);
+  const scopeDesc =
+    (write?.inputSchema as { properties?: { scope?: { description?: string } } } | undefined)?.properties?.scope
+      ?.description ?? "";
+  assert.match(scopeDesc, /project:work\.<repo>\.<branch>\.W-<n>/);
+});
+
+test("(n) include_workspaces: true の search はログの filters に include_workspaces: true を残す", async () => {
+  const before = env.deps.stats.readLogs(LOG_FROM, LOG_TO);
+
+  const w = await call("write", {
+    ...WRITE_INPUT,
+    title: "作業空間の引き継ぎ",
+    content: "PBI-013 の検証のための作業空間の引き継ぎ。テストの中だけで使う。",
+    scope: "project:work.shared-memory.pbi-013.W-013",
+  });
+  assert.ok(!w.isError, textOf(w));
+  const wsId = (JSON.parse(textOf(w)) as { id: string }).id;
+
+  const query = "作業空間の引き継ぎ";
+  const without = await call("search", { query, limit: 50 });
+  assert.ok(!without.isError, textOf(without));
+  const withoutHits = JSON.parse(textOf(without)) as { id: string }[];
+  assert.ok(!withoutHits.some((h) => h.id === wsId), "scope なしの search に作業空間が出た");
+
+  const s = await call("search", { query, include_workspaces: true, limit: 50 });
+  assert.ok(!s.isError, textOf(s));
+  const hits = JSON.parse(textOf(s)) as { id: string }[];
+  assert.ok(hits.some((h) => h.id === wsId), `include_workspaces の search に ${wsId} が無い: ${textOf(s)}`);
+
+  const after = env.deps.stats.readLogs(LOG_FROM, LOG_TO);
+  assert.equal(after.searches.length, before.searches.length + 2);
+  assert.deepEqual(after.searches.at(-1)!.filters, { include_workspaces: true, limit: 50 });
+  assert.deepEqual(after.searches.at(-2)!.filters, { limit: 50 });
+});
