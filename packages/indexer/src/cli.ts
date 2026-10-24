@@ -33,6 +33,7 @@ type Args = {
   keepOld: boolean;
   scope?: string;
   limit?: number;
+  includeWorkspaces: boolean;
   dryRun: boolean;
   sourceAgent?: string;
   notify: boolean;
@@ -160,7 +161,7 @@ const COMMANDS: Record<string, Command> = {
     },
   },
   search: {
-    usage: "search <query> [--scope s] [--limit n]  メモリを検索する",
+    usage: "search <query> [--scope s] [--limit n] [--include-workspaces]  メモリを検索する",
     run: async (cfg, deps, args) => {
       const query = args.positionals.join(" ").trim();
       if (query === "") throw new UsageError("検索語を指定してください");
@@ -183,6 +184,7 @@ const COMMANDS: Record<string, Command> = {
           query,
           scope: args.scope,
           limit: args.limit,
+          ...(args.includeWorkspaces ? { include_workspaces: true } : {}),
         },
       );
       try {
@@ -190,7 +192,11 @@ const COMMANDS: Record<string, Command> = {
           at: new Date().toISOString(),
           source: "cli",
           query,
-          filters: { scope: args.scope, limit: args.limit },
+          filters: {
+            scope: args.scope,
+            limit: args.limit,
+            ...(args.includeWorkspaces ? { include_workspaces: true } : {}),
+          },
           results: results.map((r, i) => ({ id: r.id, rank: i + 1, score: r.score })),
         });
       } catch (e) {
@@ -296,6 +302,7 @@ async function main(argv: string[]): Promise<number> {
         "keep-old": { type: "boolean", default: false },
         scope: { type: "string" },
         limit: { type: "string" },
+        "include-workspaces": { type: "boolean", default: false },
         "dry-run": { type: "boolean", default: false },
         "source-agent": { type: "string" },
         notify: { type: "boolean", default: false },
@@ -324,6 +331,7 @@ async function main(argv: string[]): Promise<number> {
       keepOld: parsed.values["keep-old"] === true,
       scope: parsed.values.scope,
       limit: parseLimit(parsed.values.limit),
+      includeWorkspaces: parsed.values["include-workspaces"] === true,
       dryRun: parsed.values["dry-run"] === true,
       sourceAgent: parsed.values["source-agent"],
       notify: parsed.values.notify === true,
