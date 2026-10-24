@@ -5,6 +5,14 @@ export const PROVENANCES = ["human_confirmed", "agent_verified", "agent_inferred
 export const SOURCE_AGENTS = ["human", "claude", "codex", "kimi", "grok", "harness2"] as const;
 export const TIERS = ["hot", "warm", "cold", "archive"] as const;
 
+/** 作業空間の scope の接頭辞 */
+export const WORKSPACE_SCOPE_PREFIX = "project:work.";
+
+/** scope が作業空間の接頭辞で始まるか (例えば `project:workshop` は作業空間でない) */
+export function isWorkspaceScope(scope: string): boolean {
+  return scope.startsWith(WORKSPACE_SCOPE_PREFIX);
+}
+
 export type Kind = (typeof KINDS)[number];
 export type Provenance = (typeof PROVENANCES)[number];
 export type SourceAgent = (typeof SOURCE_AGENTS)[number];
