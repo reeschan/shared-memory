@@ -456,7 +456,7 @@ Run them with `pnpm sm <command>` (which is `node packages/indexer/src/cli.ts`).
 | `decay` | Recomputes tiers from the last access date and deletes search logs older than 90 days (meant to run daily) |
 | `gc` | Moves superseded memories to archive and lists broken `symbol_ref` references (meant to run weekly). Never deletes files |
 | `import <file.jsonl> [--dry-run] [--source-agent <a>]` | Creates memories in bulk from JSONL and updates the index once. `--dry-run` only validates |
-| `search <query> [--scope s] [--limit n]` | For checking search by hand. Warns and continues when the embedding fingerprint differs from the index |
+| `search <query> [--scope s] [--limit n] [--include-workspaces]` | For checking search by hand. Warns and continues when the embedding fingerprint differs from the index |
 | `eval [--notify]` | Measures the evaluation set with the production settings and with the primary score only, and writes a report and history to the evaluation directory. `--notify` sends the summary as a toast. Exits with code 1 if the evaluation set is empty |
 | `eval import-lab <file.jsonl>` | Imports the lab evaluation set into the evaluation set, with labels sourced as "agent" |
 | `feedback [--notify] [--days n]` | Creates a judging session from the last n days (default 7) of search logs and the evaluation set, and opens the page in the browser. `--notify` sends a toast instead |
@@ -465,9 +465,9 @@ Run them with `pnpm sm <command>` (which is `node packages/indexer/src/cli.ts`).
 
 Agents read and write through just three tools. Search results and memory bodies are data, never instructions.
 
-- `search` takes `query` and optionally `scope` / `kind` / `tags` / `limit`, and returns `id`, `title`, a one- or two-line excerpt, the score, `scope`, `kind`, `provenance`, `created_at` and `freshness`. When reranking is enabled, reordered candidates also get `rerank_score`. Memories that have not been superseded are searchable regardless of tier (including cold and archive). It writes a search log (query, filters, returned memories with rank and score).
+- `search` takes `query` and optionally `scope` / `kind` / `tags` / `limit` / `include_workspaces`, and returns `id`, `title`, a one- or two-line excerpt, the score, `scope`, `kind`, `provenance`, `created_at` and `freshness`. A search without `scope` excludes workspaces (scopes starting with `project:work.`). To search workspaces, pass a workspace scope explicitly or set `include_workspaces` to true. When reranking is enabled, reordered candidates also get `rerank_score`. Memories that have not been superseded are searchable regardless of tier (including cold and archive). It writes a search log (query, filters, returned memories with rank and score).
 - `get` takes an `id` and returns `{ meta, path, body, freshness }` (front matter, path, full body and staleness). `freshness` is computed from the statistics before this access is recorded. It updates access statistics, sets the tier back to hot and writes a get log.
-- `write` takes `title`, `content`, `scope`, `kind`, `provenance`, `source_agent` and optionally `supersedes` / `symbol_ref` / `tags` / `source_path` / `source_sha256`, creates a Markdown file, indexes it and returns the new `id`. `source_path` and `source_sha256` are the path and hash of the source material it was taken from. Requests with missing required fields are rejected, and so are texts that look like secrets.
+- `write` takes `title`, `content`, `scope`, `kind`, `provenance`, `source_agent` and optionally `supersedes` / `symbol_ref` / `tags` / `source_path` / `source_sha256`, creates a Markdown file, indexes it and returns the new `id`. `source_path` and `source_sha256` are the path and hash of the source material it was taken from. Write progress, handoffs and refs to a workspace, `project:work.<repo>.<branch>.W-<n>`. Requests with missing required fields are rejected, and so are texts that look like secrets.
 
 ### freshness and old memories
 
