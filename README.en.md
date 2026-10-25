@@ -496,6 +496,21 @@ The block that `mcp-setup` writes into each agent's instruction file (`<!-- shar
 - 古い記憶 (search や get の結果で freshness.stale が true) を根拠に使うときは、作成日を添えてユーザーに今も正しいかを確かめる。確かめたら human_confirmed と supersedes で書き直し、変わっていたら supersedes で置き換える。
 ```
 
+### Where to write
+
+Write work-in-progress only to a workspace (`project:work.<repo>.<branch>.W-<n>`). Write to `global` or `repo:<name>` only knowledge that stays true for other work after this work is done.
+
+- Goes to the workspace: progress, hand-overs, refs between PBIs and state snapshots.
+- Does not go into memory: the version history of a skill (write it in the skill's CHANGELOG).
+- When a design has been agreed, write only the decision and where the specification lives to `repo:<name>`.
+
+The `mcp-setup` block contains two lines for this rule, right after the `write` line. On Windows, running `register.ps1` again is enough. On Mac / Linux, already-registered environments are not updated automatically, so add the following two lines by hand inside the block of each agent's instruction file, right after the line about `write`. The lines are in Japanese, as written by `register.ps1`.
+
+```markdown
+- 進み具合・引き継ぎ・PBI 間の ref・状態のスナップショットは作業空間 `project:work.<repo>.<branch>.W-<n>` にだけ書く。global・repo には、作業が終わっても別の作業で真のまま使える知識だけを書く。
+- スキルの版の経緯はスキルの CHANGELOG に書き、メモリに書かない。「設計が合意済み」は、決定と仕様の場所だけを repo に書く。
+```
+
 ### Search logs
 
 MCP `search` and `get`, and the CLI's `search`, are logged to `search_log` and `get_log` in the same SQLite file as the statistics (`state/stats.sqlite`). Search keeps working even if logging fails. Logs stay on each PC, are never sent anywhere, and rows older than 90 days are deleted by the daily `decay`.
