@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SOURCE_AGENTS,
+  WORKSPACE_SCOPE_PREFIX,
+  isWorkspaceScope,
   memoryRelPath,
   parseMemoryFile,
   scopeToDir,
@@ -198,6 +200,17 @@ test("scopeToDir の 3 形式", () => {
   assert.equal(scopeToDir("global"), "global");
   assert.equal(scopeToDir("project:foo"), "project/foo");
   assert.equal(scopeToDir("repo:bar.baz_1"), "repo/bar.baz_1");
+});
+
+test("isWorkspaceScope: project:work. で始まるときだけ作業空間", () => {
+  assert.equal(WORKSPACE_SCOPE_PREFIX, "project:work.");
+  assert.equal(isWorkspaceScope("project:work.x"), true);
+  assert.equal(isWorkspaceScope("project:work.shared-memory.main.W-001"), true);
+  assert.equal(isWorkspaceScope("project:work."), true);
+  assert.equal(isWorkspaceScope("project:work"), false);
+  assert.equal(isWorkspaceScope("project:workshop"), false);
+  assert.equal(isWorkspaceScope("repo:work.x"), false);
+  assert.equal(isWorkspaceScope("global"), false);
 });
 
 test("scopeToDir は不正値で throw", () => {
