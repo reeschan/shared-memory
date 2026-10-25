@@ -84,12 +84,13 @@ async function writeSession(dir: string, s: FeedbackSession): Promise<void> {
   await rename(tmp, file);
 }
 
-/** ログの filters から scope・kind・tags だけを取る (limit は落とす)。空なら undefined */
+/** ログの filters から scope・kind・tags・include_workspaces だけを取る (limit は落とす)。空なら undefined */
 function logFilters(f: SearchLogEntry["filters"]): EvalFilters | undefined {
   const out: EvalFilters = {};
   if (f.scope !== undefined) out.scope = f.scope;
   if (f.kind !== undefined) out.kind = f.kind;
   if (f.tags !== undefined) out.tags = [...f.tags];
+  if (f.include_workspaces === true) out.include_workspaces = true;
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
