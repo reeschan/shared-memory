@@ -496,6 +496,21 @@ SSH の代わりに、共有フォルダーなどこの PC から直接書ける
 - 古い記憶 (search や get の結果で freshness.stale が true) を根拠に使うときは、作成日を添えてユーザーに今も正しいかを確かめる。確かめたら human_confirmed と supersedes で書き直し、変わっていたら supersedes で置き換える。
 ```
 
+### 書く場所
+
+作業の途中経過は、作業空間 (`project:work.<repo>.<branch>.W-<n>`) にだけ書く。`global` や `repo:<名前>` には、作業が終わっても別の作業で真のまま使える知識だけを書く。
+
+- 作業空間に書くもの: 進み具合、引き継ぎ、PBI 間の ref、状態のスナップショット。
+- メモリに書かないもの: スキルの版の経緯 (スキルの CHANGELOG に書く)。
+- 「設計が合意済み」は、決定と仕様の場所だけを `repo:<名前>` に書く。
+
+`mcp-setup` のブロックには、この決まりの 2 行が `write` の行の直後に入っている。Windows の `register.ps1` はもう一度実行すれば届く。Mac / Linux で登録済みの環境には自動で届かないので、各エージェントの指示ファイルのブロックの中、`write` で始まる行の直後に、次の 2 行を手で足す。
+
+```markdown
+- 進み具合・引き継ぎ・PBI 間の ref・状態のスナップショットは作業空間 `project:work.<repo>.<branch>.W-<n>` にだけ書く。global・repo には、作業が終わっても別の作業で真のまま使える知識だけを書く。
+- スキルの版の経緯はスキルの CHANGELOG に書き、メモリに書かない。「設計が合意済み」は、決定と仕様の場所だけを repo に書く。
+```
+
 ### 検索ログ
 
 MCP の `search` と `get`、CLI の `search` は、統計と同じ SQLite (`state/stats.sqlite`) の `search_log` と `get_log` に記録する。記録に失敗しても検索は止まらない。ログは PC ごとで外には出さず、毎日の `decay` で 90 日より古い行を消す。
