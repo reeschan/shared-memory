@@ -418,8 +418,8 @@ systemctl --user daemon-reload
 systemctl --user enable --now shared-memory-tunnel.service
 ```
 
-- サーバー PC: 上の「セットアップ」の 1〜6 と `scripts/register-tasks.ps1` を行う。どのタスクも対話ログオンで動くので、再起動したらログオンしておく。スリープも切っておく。
-- クライアント PC: 自分の MCP サーバーとタスク (`SharedMemory-MCP`・`SharedMemory-Decay`・`SharedMemory-GC`・`SharedMemory-Eval`) は止め、上の ssh をログオン時に起動して、切れたらつなぎ直すようにしておく。OpenSearch と Ollama も要らない。
+- サーバー PC: 上の「セットアップ」の 1〜6 と `scripts/register-tasks.ps1 -NoEval` を行う (トーストはサーバー PC の画面に出て誰にも見えないので、Eval はクライアント PC に置く)。タスクは Node 24 以上 (PATH の node が古ければ fnm の版) で登録される。どのタスクも対話ログオンで動くので、再起動したらログオンしておく。スリープも切っておく。
+- クライアント PC: 自分の MCP サーバーとタスク (`SharedMemory-MCP`・`SharedMemory-Decay`・`SharedMemory-GC`) は止め、上の ssh をログオン時に起動して、切れたらつなぎ直すようにしておく。OpenSearch と Ollama も要らない。週 1 回の判定は `scripts/register-tasks.ps1 -RemoteEval <user>@<server> -RemoteRoot <サーバー PC のリポジトリ>` で `SharedMemory-Eval` だけを登録する。`scripts/remote-eval.ps1` がサーバー PC で `eval` と `feedback --json --no-open` を動かし、トーストはクライアント PC に出す (画面の URL は ssh の転送で開ける)。
 - メモリの Markdown はサーバー PC の `memories_dir` にだけ書かれる。統計の SQLite もサーバー PC のものだけを使う。
 
 SSH 越しにサーバー PC を設定するときの注意:

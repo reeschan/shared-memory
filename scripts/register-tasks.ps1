@@ -8,9 +8,18 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\register-tasks.ps1            # 登録
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\register-tasks.ps1 -Unregister # 4 つを削除
 #   ... -WhatIf を付けると内容を表示するだけで何も変えない
+# Node は TypeScript を直接動かせる 24 以上を選ぶ (PATH の node が古ければ fnm の版。scripts\node-path.ps1)。
+# MCP を SSH 先で動かす構成 (トーストを見る PC と、データのある PC が別) では:
+#   SSH 先で    : register-tasks.ps1 -NoEval (トーストが誰にも見えない SSH 先には Eval を置かない)
+#   手元の PC で: register-tasks.ps1 -RemoteEval <user>@<server> -RemoteRoot C:/Users/<user>/dev/shared-memory
+#                 (SharedMemory-Eval だけを登録する。SSH 先で eval と feedback を動かし、トーストは手元に出す。
+#                  判定の画面の URL は 127.0.0.1:<mcp.port> なので、手元から SSH 先へのポート転送が要る)
 param(
     [switch]$Unregister,
-    [switch]$WhatIf
+    [switch]$WhatIf,
+    [switch]$NoEval,
+    [string]$RemoteEval = '',
+    [string]$RemoteRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,18 +29,7 @@ $LogDir = Join-Path $Root '.cache\logs'
 # SSH セッションでは $env:USERDOMAIN が WORKGROUP になり、タスクの実行ユーザーを解決できないことがあるため、実行中のアカウント名を使う
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
-# fnm などのシェルごとの一時ディレクトリ (ジャンクション) を経由している場合は実体側のパスにする
-function Get-NodePath {
-    $cmd = Get-Command node -ErrorAction SilentlyContinue
-    if ($null -eq $cmd) { return $null }
-    $path = $cmd.Source
-    $dir = Get-Item -LiteralPath (Split-Path $path) -Force
-    if ($dir.LinkType -eq 'Junction' -or $dir.LinkType -eq 'SymbolicLink') {
-        $target = @($dir.Target)[0]
-        if ($target) { $path = Join-Path $target (Split-Path $path -Leaf) }
-    }
-    return $path
-}
+. (Join-Path $PSScriptRoot 'node-path.ps1')
 
 # PowerShell の単一引用符文字列にする
 function ConvertTo-PsLiteral([string]$s) {
@@ -49,7 +47,18 @@ function New-LoggedArgument([string]$commandText, [string]$logFile) {
     return '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "' + $inner + '"'
 }
 
-$TaskNames = @('SharedMemory-MCP', 'SharedMemory-Decay', 'SharedMemory-GC', 'SharedMemory-Eval')
+if ($NoEval -and $RemoteEval -ne '') {
+    Write-Error '-NoEval と -RemoteEval は同時に指定できません'
+    exit 1
+}
+if (($RemoteEval -eq '') -ne ($RemoteRoot -eq '')) {
+    Write-Error '-RemoteEval と -RemoteRoot は両方指定してください'
+    exit 1
+}
+
+$TaskNames = if ($RemoteEval -ne '') { @('SharedMemory-Eval') }
+    elseif ($NoEval) { @('SharedMemory-MCP', 'SharedMemory-Decay', 'SharedMemory-GC') }
+    else { @('SharedMemory-MCP', 'SharedMemory-Decay', 'SharedMemory-GC', 'SharedMemory-Eval') }
 
 # ---- 削除 ----
 if ($Unregister) {
@@ -70,13 +79,14 @@ if ($Unregister) {
 }
 
 # ---- 登録 ----
-$node = Get-NodePath
+$node = Get-TsNodePath
 if (-not $node) {
-    if ($WhatIf) {
-        Write-Warning 'node が PATH に見つかりません (表示上は node.exe とします)'
+    # -RemoteEval では手元で node を動かさないので、見つからなくてもよい
+    if ($WhatIf -or $RemoteEval -ne '') {
+        if ($RemoteEval -eq '') { Write-Warning 'Node 24 以上が見つかりません (表示上は node.exe とします)' }
         $node = 'node.exe'
     } else {
-        Write-Error 'node が PATH に見つかりません'
+        Write-Error 'Node 24 以上が見つかりません (PATH と fnm の node-versions を探しました)'
         exit 1
     }
 }
@@ -122,6 +132,20 @@ $Tasks = @(
         TimeLimit   = (New-TimeSpan -Hours 1)
     }
 )
+
+if ($RemoteEval -ne '') {
+    $remoteLit = ConvertTo-PsLiteral (Join-Path $Root 'scripts\remote-eval.ps1')
+    $Tasks = @(@{
+        Name        = 'SharedMemory-Eval'
+        Description = "shared-memory: 毎週 SSH 先 ($RemoteEval) で eval と feedback を動かし、判定の画面をこの PC のトーストで知らせる"
+        TriggerText = '毎週日曜 10:00'
+        Trigger     = { New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At '10:00' }
+        Command     = "& $remoteLit -Ssh $(ConvertTo-PsLiteral $RemoteEval) -RemoteRoot $(ConvertTo-PsLiteral $RemoteRoot)"
+        TimeLimit   = (New-TimeSpan -Hours 1)
+    })
+} elseif ($NoEval) {
+    $Tasks = @($Tasks | Where-Object { $_.Name -ne 'SharedMemory-Eval' })
+}
 
 foreach ($t in $Tasks) {
     $logFile = Join-Path $LogDir ($t.Name + '.log')

@@ -418,8 +418,8 @@ systemctl --user daemon-reload
 systemctl --user enable --now shared-memory-tunnel.service
 ```
 
-- Server PC: do steps 1 to 6 of "Setup" above and run `scripts/register-tasks.ps1`. All tasks run under an interactive logon, so log on after a reboot. Turn off sleep as well.
-- Client PC: stop your own MCP server and tasks (`SharedMemory-MCP`, `SharedMemory-Decay`, `SharedMemory-GC`, `SharedMemory-Eval`), start the ssh command above at logon, and make it reconnect when it drops. OpenSearch and Ollama are not needed either.
+- Server PC: do steps 1 to 6 of "Setup" above and run `scripts/register-tasks.ps1 -NoEval` (a toast on the server PC's screen reaches nobody, so the Eval task lives on the client PC). Tasks are registered with Node 24 or later (the newest fnm version when the node on PATH is older). All tasks run under an interactive logon, so log on after a reboot. Turn off sleep as well.
+- Client PC: stop your own MCP server and tasks (`SharedMemory-MCP`, `SharedMemory-Decay`, `SharedMemory-GC`), start the ssh command above at logon, and make it reconnect when it drops. OpenSearch and Ollama are not needed either. For the weekly judgments, register only `SharedMemory-Eval` with `scripts/register-tasks.ps1 -RemoteEval <user>@<server> -RemoteRoot <repository on the server PC>`. `scripts/remote-eval.ps1` runs `eval` and `feedback --json --no-open` on the server PC and shows the toast on the client PC (the screen's URL opens through the ssh forward).
 - Memory Markdown is written only to the server PC's `memories_dir`. Only the server PC's SQLite statistics are used.
 
 Notes for configuring the server PC over SSH:

@@ -37,6 +37,7 @@ type Args = {
   dryRun: boolean;
   sourceAgent?: string;
   notify: boolean;
+  noOpen: boolean;
   days?: number;
 };
 
@@ -239,7 +240,7 @@ const COMMANDS: Record<string, Command> = {
   },
   feedback: {
     usage:
-      "feedback [--notify] [--days <n>]  過去 n 日 (既定 7) の検索から判定の画面を作り、ブラウザーで開く (--notify ならトーストで知らせる)",
+      "feedback [--notify | --no-open] [--days <n>]  過去 n 日 (既定 7) の検索から判定の画面を作り、ブラウザーで開く (--notify ならトーストで知らせる。--no-open なら開かずに URL を出すだけ。SSH 先で作って手元で知らせるとき用)",
     run: async (cfg, deps, args) => {
       if (args.positionals.length > 0) throw new UsageError("feedback は引数を取りません");
       const r = await runFeedbackCommand(cfg, feedbackDeps(cfg, deps), { days: args.days });
@@ -261,6 +262,10 @@ const COMMANDS: Record<string, Command> = {
           return 0;
         }
         emit(args.json, { ...base, notified: false, url: r.url }, `セッション ${r.session.id} (問い ${n} 件): ${r.url}`);
+        return 0;
+      }
+      if (args.noOpen) {
+        emit(args.json, { ...base, url: r.url }, `セッション ${r.session.id} (問い ${n} 件): ${r.url}`);
         return 0;
       }
       const opened = await openUrl(r.url);
@@ -306,6 +311,7 @@ async function main(argv: string[]): Promise<number> {
         "dry-run": { type: "boolean", default: false },
         "source-agent": { type: "string" },
         notify: { type: "boolean", default: false },
+        "no-open": { type: "boolean", default: false },
         days: { type: "string" },
       },
     });
@@ -335,6 +341,7 @@ async function main(argv: string[]): Promise<number> {
       dryRun: parsed.values["dry-run"] === true,
       sourceAgent: parsed.values["source-agent"],
       notify: parsed.values.notify === true,
+      noOpen: parsed.values["no-open"] === true,
       days: parseDays(parsed.values.days),
     };
     const cfg = loadConfig();
